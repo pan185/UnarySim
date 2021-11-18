@@ -3,6 +3,7 @@ import math
 from UnarySim.stream.gen import RNG, RNGMulti, SourceGen, BSGen, BSGenMulti
 from UnarySim.kernel.utils import conv2d_output_shape, num2tuple
 from UnarySim.kernel.linear import HUBLinearFunction
+from UnarySim.kernel.linear import HUBLinearFunction_flex
 from UnarySim.kernel.linear import FxpLinearFunction
 from UnarySim.kernel.linear import TlutLinearFunction
 from UnarySim.kernel.add import FSUAdd
@@ -500,6 +501,134 @@ class HUBConv2d(torch.nn.Conv2d):
         else:
             return output + self.bias.view([1, self.bias.size()[0], 1, 1])
 
+class HUBConv2d_flex(torch.nn.Conv2d):
+    """
+    This module is the 2d conv layer, with binary input and binary output
+    This module support flexible input and weight precision
+    bitwidth has to be a tuple for (input, weight)
+    """
+    def __init__(self, 
+                    in_channels, 
+                    out_channels, 
+                    kernel_size, 
+                    stride=1, 
+                    padding=0, 
+                    dilation=1, 
+                    groups=1, 
+                    bias=True, 
+                    padding_mode='zeros', 
+                    binary_weight=None, 
+                    binary_bias=None, 
+                    rng="Sobol", 
+                    bitwidth=None,
+                    rounding="round"):
+        super(HUBConv2d_flex, self).__init__(in_channels, 
+                                            out_channels, 
+                                            kernel_size, 
+                                            stride, 
+                                            padding, 
+                                            dilation, 
+                                            groups, 
+                                            bias, 
+                                            padding_mode)
+        
+        assert groups==1, "Supported group number is 1."
+        assert padding_mode=='zeros', "Supported padding_mode number is 'zeros'."
+
+        # weight and bias
+        if binary_weight is not None:
+            self.weight.data = binary_weight
+        
+        if bias and (binary_bias is not None):
+            self.bias.data = binary_bias
+            
+        if isinstance(bitwidth, tuple):
+            self.bw_input, self.bw_wght = (bitwidth[0]-1, bitwidth[1]-1)
+        else: raise ValueError("HUBConv2dFlex layer only supports explict bitwidth tuple assignment.")
+        
+        # bitwidth of rng
+        # self.bitwidth = (self.cycle - 1).bit_length()
+        # which ever is the smaller bitwidth, repeat that bitstream to do population count
+        ratio = int(2**max(self.bw_wght, self.bw_input) / 2**min(self.bw_wght, self.bw_input))
+        self.max_bw = max(self.bw_wght, self.bw_input)
+        cycle = 2 ** self.max_bw
+
+        input_repeat = 1
+        wght_repeat = 1
+        if self.bw_input > self.bw_wght:
+            wght_repeat = ratio
+        elif self.bw_input < self.bw_wght:
+            input_repeat = ratio
+        else: pass
+
+        # random_sequence from sobol RNG
+        self.irng = RNG(self.bw_input, 1, rng)().repeat(input_repeat) # temporal input 
+        self.wrng = RNG(self.bw_wght, 1, "Sobol")().repeat(wght_repeat) # rate weight
+        # print("rng sizes ", self.irng.size(), self.wrng.size())
+        
+        # generate the value map for mul using current rng
+        # dim 0 is input index
+        # the tensor input value is the actual value produced by the rng
+        self.input_map = torch.nn.Parameter(torch.empty(cycle), requires_grad=False)
+        input_val_cycle = torch.empty(0)
+        torch.cat(cycle*[torch.as_tensor([c for c in range(cycle)], dtype=torch.float).unsqueeze(1)], 1, out=input_val_cycle)
+        input_bit_cycle = torch.empty(0)
+        torch.gt(input_val_cycle, self.irng.unsqueeze(0), out=input_bit_cycle)
+        self.input_map.data = torch.sum(input_bit_cycle, 1).squeeze_().type(torch.long)
+
+        # dim 0 is input index, dim 1 is weight index
+        # the tensor value is the actual weight value produced by the rng, under a specific input and weight
+        self.wght_map = torch.nn.Parameter(torch.empty(cycle, cycle), requires_grad=False)
+        wght_bit_cycle = torch.empty(0)
+        torch.gt(input_val_cycle, self.wrng.unsqueeze(0), out=wght_bit_cycle)
+        for c in range(cycle):
+            self.wght_map.data[c] = torch.sum(wght_bit_cycle[:, 0:self.input_map.data[c]], 1).squeeze_()
+        
+        # rounding mode
+        self.rounding = rounding
+        
+        self.rshift_input = None
+        self.rshift_wght = None
+        self.rshift_output = None
+    
+    @autocast()
+    def forward(self, input):
+        # See the autograd section for explanation of what happens here.
+        with torch.no_grad():
+            input_max_int = input.abs().max().log2()
+            wght_max_int = self.weight.abs().max().log2()
+            if self.rounding == "round":
+                input_max_int = input_max_int.round()
+                wght_max_int = wght_max_int.round()
+            elif self.rounding == "floor":
+                input_max_int = input_max_int.floor()
+                wght_max_int = wght_max_int.floor()
+            elif self.rounding == "ceil":
+                input_max_int = input_max_int.ceil()
+                wght_max_int = wght_max_int.ceil()
+
+            self.rshift_input = input_max_int - self.bw_input
+            self.rshift_wght = wght_max_int - self.bw_wght
+            self.rshift_output = self.max_bw - input_max_int - wght_max_int
+            
+            # all data are in NCHW
+            output_size = conv2d_output_shape((input.size()[2], input.size()[3]), kernel_size=self.kernel_size, dilation=self.dilation, pad=self.padding, stride=self.stride)
+
+        # See the autograd section for explanation of what happens here.
+        input_im2col = torch.nn.functional.unfold(input, self.kernel_size, self.dilation, self.padding, self.stride)
+        input_transpose = input_im2col.transpose(1, 2)
+        input_reshape = input_transpose.reshape(-1, input_transpose.size()[-1])
+
+        weight = self.weight.view(self.weight.size()[0], -1)
+        mm_out = HUBLinearFunction_flex.apply(input_reshape, weight, None, self.rshift_input, self.rshift_wght, self.rshift_output, self.bw_input, self.bw_wght, self.wght_map)
+        mm_out_reshape = mm_out.reshape(input.size()[0], -1, mm_out.size()[-1])
+        mm_out_transpose = mm_out_reshape.transpose(1, 2)
+        output = torch.nn.functional.fold(mm_out_transpose, output_size, (1, 1))
+
+        if self.bias is None:
+            return output
+        else:
+            return output + self.bias.view([1, self.bias.size()[0], 1, 1])
 
 class TlutConv2d(torch.nn.Conv2d):
     """

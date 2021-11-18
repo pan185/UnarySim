@@ -1017,8 +1017,8 @@ class HUBLinear_flex(torch.nn.Linear):
     1) binary data scale factor
     2) binary weight
     3) binary bias
-    4) Dont need cycle anymore since et not supported for ununiform bitwidth
-    TODO: No hardware mapping???
+    4) bitwidth now has to be a tuple for (input, weight)
+    Note: No et supported
     """
     def __init__(self, 
                  in_features, 
