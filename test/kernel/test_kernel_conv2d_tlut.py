@@ -21,9 +21,8 @@ bias = True
 padding_mode = 'zeros'
 
 bitwidth = (5, 9)
-keep_res = "input"
-more_res = "input"
 rounding = "round"
+cycle = 16
 
 total_bit = 11
 input_int_bit = 3
@@ -35,8 +34,8 @@ input = ((torch.rand(32, in_channels, input_size[0], input_size[1]) - 0.5) * 2**
 conv2d = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode).to(device)
 conv2d_o = conv2d(input)
 
-uconv2d = FxpConv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode, 
-                        binary_weight=conv2d.weight.data, binary_bias=conv2d.bias, bitwidth=bitwidth, keep_res=keep_res, more_res=more_res, rounding=rounding).to(device)
+uconv2d = TlutConv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode, 
+                        binary_weight=conv2d.weight.data, binary_bias=conv2d.bias, bitwidth=bitwidth, cycle=cycle, rounding=rounding).to(device)
 uconv2d_o = uconv2d(input)
 
 (conv2d_o - uconv2d_o).abs().mean().backward()

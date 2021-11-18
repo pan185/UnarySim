@@ -4,6 +4,7 @@ from UnarySim.stream.gen import RNG, RNGMulti, SourceGen, BSGen, BSGenMulti
 from UnarySim.kernel.utils import conv2d_output_shape, num2tuple
 from UnarySim.kernel.linear import HUBLinearFunction
 from UnarySim.kernel.linear import FxpLinearFunction
+from UnarySim.kernel.linear import TlutLinearFunction
 from UnarySim.kernel.add import FSUAdd
 from torch.cuda.amp import autocast
 
@@ -499,6 +500,119 @@ class HUBConv2d(torch.nn.Conv2d):
         else:
             return output + self.bias.view([1, self.bias.size()[0], 1, 1])
 
+
+class TlutConv2d(torch.nn.Conv2d):
+    """
+    This module is the 2d conv layer, with binary input and binary output
+    """
+    def __init__(self, 
+                    in_channels, 
+                    out_channels, 
+                    kernel_size, 
+                    stride=1, 
+                    padding=0, 
+                    dilation=1, 
+                    groups=1, 
+                    bias=True, 
+                    padding_mode='zeros', 
+                    binary_weight=None, 
+                    binary_bias=None, 
+                    bitwidth=8,
+                    cycle = None,
+                    rounding="round"):
+        super(TlutConv2d, self).__init__(in_channels, 
+                                            out_channels, 
+                                            kernel_size, 
+                                            stride, 
+                                            padding, 
+                                            dilation, 
+                                            groups, 
+                                            bias, 
+                                            padding_mode)
+
+        assert groups==1, "Supported group number is 1."
+        assert padding_mode=='zeros', "Supported padding_mode number is 'zeros'."
+
+        # weight and bias
+        if binary_weight is not None:
+            self.weight.data = binary_weight
+        
+        if bias and (binary_bias is not None):
+            self.bias.data = binary_bias
+            
+        # bitwidth of abs
+        if isinstance(bitwidth, tuple):
+            self.bw_input, self.bw_wght = (bitwidth[0]-1, bitwidth[1]-1)
+        
+        # max abs value
+        self.max_abs_input = 2**self.bw_input
+        self.max_abs_wght = 2**self.bw_wght
+        
+        # rounding mode
+        self.rounding = rounding
+
+        # early termination cycle
+        self.cycle = cycle
+        
+        self.rshift_input = None
+        self.rshift_wght = None
+        self.rshift_output = None
+    
+    @autocast()
+    def forward(self, input):
+        # See the autograd section for explanation of what happens here.
+        with torch.no_grad():
+            # Preparing input shift value
+            if self.rshift_input is None:
+                input_max_int = input.abs().max().log2()
+                if self.rounding == "round":
+                    input_max_int = input_max_int.round()
+                elif self.rounding == "floor":
+                    input_max_int = input_max_int.floor()
+                elif self.rounding == "ceil":
+                    input_max_int = input_max_int.ceil()
+                self.rshift_input = input_max_int - self.bw_input
+            
+            # Preparing weight shift value
+            if self.rshift_wght is None:
+                wght_max_int = self.weight.abs().max().log2()
+                if self.rounding == "round":
+                    wght_max_int = wght_max_int.round()
+                elif self.rounding == "floor":
+                    wght_max_int = wght_max_int.floor()
+                elif self.rounding == "ceil":
+                    wght_max_int = wght_max_int.ceil()
+                self.rshift_wght = wght_max_int - self.bw_wght
+            
+            # Preparing output shift value
+            if self.rshift_output is None:
+                self.rshift_output = 0 - self.rshift_input - self.rshift_wght
+            
+            # Preparing input clamp value based on cycle 
+            self.input_clamp_val = 2**self.bw_input
+            if self.cycle != None and self.cycle < 2**self.bw_input-1:
+                self.input_clamp_val = self.cycle
+            print("input_clamp_val=", self.input_clamp_val)
+
+            # Precompute output kernel size based on filter size, padding, dilation, stride, etc.
+            # all data are in NCHW
+            output_size = conv2d_output_shape((input.size()[2], input.size()[3]), kernel_size=self.kernel_size, dilation=self.dilation, pad=self.padding, stride=self.stride)
+
+        # See the autograd section for explanation of what happens here.
+        input_im2col = torch.nn.functional.unfold(input, self.kernel_size, self.dilation, self.padding, self.stride)
+        input_transpose = input_im2col.transpose(1, 2)
+        input_reshape = input_transpose.reshape(-1, input_transpose.size()[-1])
+
+        weight = self.weight.view(self.weight.size()[0], -1)
+        mm_out = TlutLinearFunction.apply(input_reshape, weight, None, self.rshift_input, self.rshift_wght, self.rshift_output, self.max_abs_input, self.max_abs_wght, self.input_clamp_val)
+        mm_out_reshape = mm_out.reshape(input.size()[0], -1, mm_out.size()[-1])
+        mm_out_transpose = mm_out_reshape.transpose(1, 2)
+        output = torch.nn.functional.fold(mm_out_transpose, output_size, (1, 1))
+
+        if self.bias is None:
+            return output
+        else:
+            return output + self.bias.view([1, self.bias.size()[0], 1, 1])
 
 class FxpConv2d(torch.nn.Conv2d):
     """

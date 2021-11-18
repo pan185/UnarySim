@@ -1354,6 +1354,7 @@ class TlutLinear(torch.nn.Linear):
                 self.rshift_output = 0 - self.rshift_input - self.rshift_wght
             
             # Preparing input clamp value based on cycle
+            self.input_clamp_val = 2**self.bw_input
             if self.cycle != None and self.cycle < 2**self.bw_input-1:
                 self.input_clamp_val = self.cycle
             else:
