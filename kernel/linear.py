@@ -1009,8 +1009,191 @@ class HUBLinear(torch.nn.Linear):
             self.rshift_output = self.bitwidth - input_max_int - wght_max_int
         
         return HUBLinearFunction.apply(input, self.weight, self.bias, self.rshift_input, self.rshift_wght, self.rshift_output, self.cycle, self.wght_map)
-
     
+class HUBLinear_flex(torch.nn.Linear):
+    """
+    this module is the fully connected layer, with binary input and binary output
+    its API is similar to the parent class (input/output feature count, bias flag), except:
+    1) binary data scale factor
+    2) binary weight
+    3) binary bias
+    4) Dont need cycle anymore since et not supported for ununiform bitwidth
+    TODO: No hardware mapping???
+    """
+    def __init__(self, 
+                 in_features, 
+                 out_features, 
+                 bias=True, 
+                 binary_weight=None, 
+                 binary_bias=None, 
+                 rng="Sobol", 
+                 #cycle=128,
+                 bitwidth = None,
+                 rounding="round"):
+        super(HUBLinear_flex, self).__init__(in_features, out_features, bias)
+        
+        # weight and bias
+        if binary_weight is not None:
+            self.weight.data = binary_weight
+        
+        if bias and (binary_bias is not None):
+            self.bias.data = binary_bias
+        
+        # bitwidth of rng
+        #self.bitwidth = (self.cycle - 1).bit_length()
+        if isinstance(bitwidth, tuple):
+            self.bw_input, self.bw_wght = (bitwidth[0]-1, bitwidth[1]-1)
+        else: raise ValueError("HUBLinearFlex layer only supports explict bitwidth tuple assignment.")
+        
+        # which ever is the smaller bitwidth, repeat that bitstream to do population count
+        ratio = int(2**max(self.bw_wght, self.bw_input) / 2**min(self.bw_wght, self.bw_input))
+        self.max_bw = max(self.bw_wght, self.bw_input)
+        cycle = 2 ** self.max_bw
+
+        input_repeat = 1
+        wght_repeat = 1
+        if self.bw_input > self.bw_wght:
+            wght_repeat = ratio
+        elif self.bw_input < self.bw_wght:
+            input_repeat = ratio
+        else: pass
+
+        # random_sequence from sobol RNG
+        self.irng = RNG(self.bw_input, 1, rng)().repeat(input_repeat) # temporal input 
+        self.wrng = RNG(self.bw_wght, 1, "Sobol")().repeat(wght_repeat) # rate weight
+        # print("rng sizes ", self.irng.size(), self.wrng.size())
+
+                
+        # generate the value map for mul using current rng
+        # dim 0 is input index
+        # the tensor input value is the actual value produced by the rng
+        self.input_map = torch.nn.Parameter(torch.empty(cycle), requires_grad=False)
+        input_val_cycle = torch.empty(0)
+        torch.cat(cycle*[torch.arange(cycle, dtype=torch.float).unsqueeze(1)], 1, out=input_val_cycle)
+        input_bit_cycle = torch.empty(0)
+        torch.gt(input_val_cycle, self.irng.unsqueeze(0), out=input_bit_cycle)
+        self.input_map.data = torch.sum(input_bit_cycle, 1).squeeze_().type(torch.long)
+
+        # dim 0 is input index, dim 1 is weight index
+        # the tensor value is the actual weight value produced by the rng, under a specific input and weight
+        self.wght_map = torch.nn.Parameter(torch.empty(cycle, cycle), requires_grad=False)
+        wght_bit_cycle = torch.empty(0)
+        torch.gt(input_val_cycle, self.wrng.unsqueeze(0), out=wght_bit_cycle)
+        for c in range(cycle):
+            self.wght_map.data[c] = torch.sum(wght_bit_cycle[:, 0:self.input_map.data[c]], 1).squeeze_()
+        
+        # rounding mode
+        self.rounding = rounding
+        
+        self.rshift_input = None
+        self.rshift_wght = None
+        self.rshift_output = None
+        
+    @autocast()
+    def forward(self, input):
+        # See the autograd section for explanation of what happens here.
+        with torch.no_grad():
+            input_max_int = input.abs().max().log2()
+            wght_max_int = self.weight.abs().max().log2()
+            if self.rounding == "round":
+                input_max_int = input_max_int.round()
+                wght_max_int = wght_max_int.round()
+            elif self.rounding == "floor":
+                input_max_int = input_max_int.floor()
+                wght_max_int = wght_max_int.floor()
+            elif self.rounding == "ceil":
+                input_max_int = input_max_int.ceil()
+                wght_max_int = wght_max_int.ceil()
+
+            self.rshift_input = input_max_int - self.bw_input
+            self.rshift_wght = wght_max_int - self.bw_wght
+            # self.rshift_output = self.bitwidth - input_max_int - wght_max_int
+            self.rshift_output = self.max_bw - input_max_int - wght_max_int
+        
+        return HUBLinearFunction_flex.apply(input, self.weight, self.bias, self.rshift_input, self.rshift_wght, self.rshift_output, self.bw_input, self.bw_wght, self.wght_map)
+   
+
+# Inherit from Function
+class HUBLinearFunction_flex(torch.autograd.Function):
+
+    # Note that both forward and backward are @staticmethods
+    @staticmethod
+    # bias is an optional argument
+    def forward(ctx, input, weight, bias=None, 
+                rshift_input=3, 
+                rshift_wght=3, 
+                rshift_output=3, 
+                eff_input_bitwidth=None,
+                eff_wght_bitwidth=None,
+                wght_map=None):
+        ctx.save_for_backward(input, weight, bias)
+
+        # first dim should always be batch
+        batch = input.size()[0]
+        
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+        # input preparation
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+        # scale input to range 0~2^bitwidth-1
+        buf_input = torch.empty(0, dtype=torch.long, device=input.device)
+        torch.abs((input >> rshift_input).unsqueeze_(1).type(torch.long), out=buf_input)
+        torch.clamp(buf_input, 0, 2**eff_input_bitwidth-1, out=buf_input)
+        
+        # actual input: its sign
+        act_input = torch.empty(0, device=input.device)
+        torch.sign(input, out=act_input)
+        act_input.unsqueeze_(1)
+        
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+        # weight preparation
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+        # scale weight with batch to range 0~2^bitwidth-1
+        buf_wght_no_batch = torch.empty(0, dtype=torch.long, device=weight.device)
+        torch.abs((weight >> rshift_wght).unsqueeze_(0).type(torch.long), out=buf_wght_no_batch)
+        torch.clamp(buf_wght_no_batch, 0, 2**eff_wght_bitwidth-1, out=buf_wght_no_batch)
+        buf_wght = torch.empty(0, dtype=torch.long, device=weight.device)
+        torch.cat(batch*[buf_wght_no_batch], 0, out=buf_wght)
+
+        # get actual weight for calculation
+        sign_wght_no_batch = torch.empty(0, device=weight.device)
+        torch.sign(weight, out=sign_wght_no_batch)
+        sign_wght_no_batch.unsqueeze_(0)
+        act_wght = torch.empty(0, device=weight.device)
+        torch.cat(batch*[sign_wght_no_batch], 0, out=act_wght)
+        torch.mul(wght_map[buf_input, buf_wght], act_wght, out=act_wght)
+        
+        output = torch.empty(0, device=weight.device)
+        torch.matmul(act_input, act_wght.transpose(1, 2), out=output)
+        
+        output = (output >> rshift_output).squeeze_(1)
+        
+        if bias is not None:
+            output += bias.unsqueeze(0).expand_as(output)
+        return output
+
+    # This function has only a single output, so it gets only one gradient
+    @staticmethod
+    def backward(ctx, grad_output):
+        # This is a pattern that is very convenient - at the top of backward
+        # unpack saved_tensors and initialize all gradients w.r.t. inputs to
+        # None. Thanks to the fact that additional trailing Nones are
+        # ignored, the return statement is simple even when the function has
+        # optional inputs.
+        input, weight, bias = ctx.saved_tensors
+        grad_input = grad_weight = grad_bias = None
+
+        # These needs_input_grad checks are optional and there only to
+        # improve efficiency. If you want to make your code simpler, you can
+        # skip them. Returning gradients for inputs that don't require it is
+        # not an error.
+        if ctx.needs_input_grad[0]:
+            grad_input = grad_output.matmul(weight)
+        if ctx.needs_input_grad[1]:
+            grad_weight = grad_output.t().matmul(input)
+        if bias is not None and ctx.needs_input_grad[2]:
+            grad_bias = grad_output.sum(0)
+
+        return grad_input, grad_weight, grad_bias, None, None, None, None, None, None
 # Inherit from Function
 class HUBLinearFunction(torch.autograd.Function):
 
@@ -1092,6 +1275,161 @@ class HUBLinearFunction(torch.autograd.Function):
 
         return grad_input, grad_weight, grad_bias, None, None, None, None, None
 
+class TlutLinear(torch.nn.Linear):
+    """
+    this module is the fully connected layer, with binary input and binary output
+    its API is similar to the parent class (input/output feature count, bias flag), except:
+    1) binary data scale factor
+    2) binary weight
+    3) binary bias
+    4) mac cycle
+    """
+    def __init__(self, 
+                 in_features, 
+                 out_features, 
+                 bias=True, 
+                 binary_weight=None, 
+                 binary_bias=None, 
+                 cycle = 16,
+                 bitwidth=8, 
+                 rounding="round"):
+        super(TlutLinear, self).__init__(in_features, out_features, bias)
+
+        # weight and bias
+        if binary_weight is not None:
+            self.weight.data = binary_weight
+        
+        if bias and (binary_bias is not None):
+            self.bias.data = binary_bias
+        
+        # bitwidth of abs
+        if isinstance(bitwidth, tuple):
+            self.bw_input, self.bw_wght = (bitwidth[0]-1, bitwidth[1]-1)
+            # self.bw_input, self.bw_wght = (bitwidth[0], bitwidth[1]-1) # By default unsigned input value and signed wght
+        else:
+            raise ValueError("Specify bitwidth tuple explicitly.")
+
+        # max abs value
+        self.max_abs_input = 2**self.bw_input
+        self.max_abs_wght = 2**self.bw_wght
+        
+        # rounding mode
+        self.rounding = rounding
+
+        # Early termination cycle
+        self.cycle = cycle
+        
+        self.rshift_input = None
+        self.rshift_wght = None
+        self.rshift_output = None
+    
+    @autocast()
+    def forward(self, input):
+        # Preparing quantization/round config
+        with torch.no_grad():
+            # Preparing input shift value
+            if self.rshift_input is None:
+                input_max_int = input.abs().max().log2()
+                if self.rounding == "round":
+                    input_max_int = input_max_int.round()
+                elif self.rounding == "floor":
+                    input_max_int = input_max_int.floor()
+                elif self.rounding == "ceil":
+                    input_max_int = input_max_int.ceil()
+                self.rshift_input = input_max_int - self.bw_input
+            
+            # Preparing weight shift value
+            if self.rshift_wght is None:
+                wght_max_int = self.weight.abs().max().log2()
+                if self.rounding == "round":
+                    wght_max_int = wght_max_int.round()
+                elif self.rounding == "floor":
+                    wght_max_int = wght_max_int.floor()
+                elif self.rounding == "ceil":
+                    wght_max_int = wght_max_int.ceil()
+                self.rshift_wght = wght_max_int - self.bw_wght
+            
+            # Preparing output shift value
+            if self.rshift_output is None:
+                self.rshift_output = 0 - self.rshift_input - self.rshift_wght
+            
+            # Preparing input clamp value based on cycle
+            if self.cycle != None and self.cycle < 2**self.bw_input-1:
+                self.input_clamp_val = self.cycle
+            else:
+                self.input_clamp_val = None
+        
+        return TlutLinearFunction.apply(input, self.weight, self.bias, self.rshift_input, self.rshift_wght, self.rshift_output, self.max_abs_input, self.max_abs_wght, self.input_clamp_val)
+
+# Inherit from Function
+class TlutLinearFunction(torch.autograd.Function):
+
+    # Note that both forward and backward are @staticmethods
+    @staticmethod
+    # bias is an optional argument
+    def forward(ctx, input, weight, bias=None, 
+                rshift_input=3, 
+                rshift_wght=3, 
+                rshift_output=3, 
+                max_abs_input=128, 
+                max_abs_wght=128,
+                input_clamp_val=None):
+        ctx.save_for_backward(input, weight, bias)
+        
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+        # input preparation
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+        # round input to (bot, top)
+        if input_clamp_val != None: max_abs_input = input_clamp_val
+        bot_input = 0 - max_abs_input
+        top_input = max_abs_input - 1
+        input_round = torch.empty(0, device=input.device)
+        torch.round(input >> rshift_input, out=input_round)
+        
+        torch.clamp(input_round.unsqueeze_(1), bot_input, top_input, out=input_round)
+        print(f"Input clamped to {bot_input}, {top_input}")
+        
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+        # weight preparation
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+        # round input to (bot, top)
+        bot_wght = 0 - max_abs_wght
+        top_wght = max_abs_wght - 1
+        wght_round = torch.empty(0, device=input.device)
+        torch.round(weight >> rshift_wght, out=wght_round)
+        torch.clamp(wght_round.unsqueeze_(0), bot_wght, top_wght, out=wght_round)
+        
+        output = torch.empty(0, device=weight.device)
+        torch.matmul(input_round, wght_round.transpose(1, 2), out=output)
+        output = (output >> rshift_output).squeeze_(1)
+        
+        if bias is not None:
+            output += bias.unsqueeze(0).expand_as(output)
+        return output
+
+    # This function has only a single output, so it gets only one gradient
+    @staticmethod
+    def backward(ctx, grad_output):
+        # This is a pattern that is very convenient - at the top of backward
+        # unpack saved_tensors and initialize all gradients w.r.t. inputs to
+        # None. Thanks to the fact that additional trailing Nones are
+        # ignored, the return statement is simple even when the function has
+        # optional inputs.
+        input, weight, bias = ctx.saved_tensors
+        grad_input = grad_weight = grad_bias = None
+
+        # These needs_input_grad checks are optional and there only to
+        # improve efficiency. If you want to make your code simpler, you can
+        # skip them. Returning gradients for inputs that don't require it is
+        # not an error.
+        if ctx.needs_input_grad[0]:
+            grad_input = grad_output.matmul(weight)
+        if ctx.needs_input_grad[1]:
+            grad_weight = grad_output.t().matmul(input)
+        if bias is not None and ctx.needs_input_grad[2]:
+            grad_bias = grad_output.sum(0)
+
+        return grad_input, grad_weight, grad_bias, None, None, None, None, None, None
     
 class FxpLinear(torch.nn.Linear):
     """
@@ -1121,9 +1459,13 @@ class FxpLinear(torch.nn.Linear):
         if bias and (binary_bias is not None):
             self.bias.data = binary_bias
         
+        self.keep_res = keep_res
+
         # bitwidth of abs
         if isinstance(bitwidth, tuple):
             self.bw_input, self.bw_wght = (bitwidth[0]-1, bitwidth[1]-1)
+            if keep_res == "output":
+                self.bw_target_output = max(bitwidth)
         else:
             if keep_res == "input":
                 self.bw_input, self.bw_wght = (bitwidth-1, bitwidth-1)
@@ -1178,7 +1520,12 @@ class FxpLinear(torch.nn.Linear):
             if self.rshift_output is None:
                 self.rshift_output = 0 - self.rshift_input - self.rshift_wght
         
-        return FxpLinearFunction.apply(input, self.weight, self.bias, self.rshift_input, self.rshift_wght, self.rshift_output, self.max_abs_input, self.max_abs_wght)
+        if self.keep_res == "input":
+            return FxpLinearFunction.apply(input, self.weight, self.bias, self.rshift_input, self.rshift_wght, self.rshift_output, self.max_abs_input, self.max_abs_wght)
+        else:
+            output = FxpLinearFunction.apply(input, self.weight, self.bias, self.rshift_input, self.rshift_wght, self.rshift_output, self.max_abs_input, self.max_abs_wght)
+            extra_rshift = self.rshift_output - self.bw_target_output
+            return (output >> extra_rshift).round() << extra_rshift
 
     
 # Inherit from Function

@@ -10,7 +10,7 @@ import numpy as np
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # %%
-def test(rounding = "round", abs_err = True):
+def test(rounding = "round", abs_err = True, et_cycle = None):
     ufc_err_min_list = []
     ufc_err_max_list = []
     ufc_err_mean_list = []
@@ -25,11 +25,19 @@ def test(rounding = "round", abs_err = True):
     ifc_err_max_list = []
     ifc_err_mean_list = []
     ifc_err_std_list = []
+
+    cfc_err_min_list = []
+    cfc_err_max_list = []
+    cfc_err_mean_list = []
+    cfc_err_std_list = []
     
     x_label = []
     
     for bitwidth in range(6, 13):
-        cycle = 2**(bitwidth-1)
+        bitwidth_tuple = (5, bitwidth)
+        cycle = 2**(bitwidth-1) # standard cycle no et
+        # et_cycle = 16 # if no et
+        # et_cycle = 14 # terminate at cycle
         
         in_feature = 2
         out_feature = 2**12
@@ -43,21 +51,27 @@ def test(rounding = "round", abs_err = True):
         fc.weight.data[:, 1] = 0.
         fc_o = fc(input)
 
-        ufc = HUBLinear(in_feature, out_feature, bias=bias, binary_weight=fc.weight.data, binary_bias=fc.bias, cycle=cycle, rounding=rounding).to(device)
+        # ufc = HUBLinear(in_feature, out_feature, bias=bias, binary_weight=fc.weight.data, binary_bias=fc.bias, cycle=cycle, rounding=rounding).to(device)
+        ufc = HUBLinear_flex(in_feature, out_feature, bias=bias, binary_weight=fc.weight.data, binary_bias=fc.bias, bitwidth=bitwidth_tuple, rounding=rounding).to(device)
         ufc_o = ufc(input)
-        
-        ofc = FxpLinear(in_feature, out_feature, bias=bias, binary_weight=fc.weight.data, binary_bias=fc.bias, bitwidth=bitwidth, keep_res="output", more_res="input", rounding=rounding).to(device)
+
+        cfc = TlutLinear(in_feature, out_feature, bias=bias, binary_weight=fc.weight.data, binary_bias=fc.bias, cycle=et_cycle, bitwidth=bitwidth_tuple, rounding=rounding).to(device)
+        cfc_o = cfc(input)
+
+        ofc = FxpLinear(in_feature, out_feature, bias=bias, binary_weight=fc.weight.data, binary_bias=fc.bias, bitwidth=bitwidth_tuple, keep_res="output", more_res="input", rounding=rounding).to(device)
         ofc_o = ofc(input)
         
-        ifc = FxpLinear(in_feature, out_feature, bias=bias, binary_weight=fc.weight.data, binary_bias=fc.bias, bitwidth=bitwidth, keep_res="input",  more_res="input", rounding=rounding).to(device)
+        ifc = FxpLinear(in_feature, out_feature, bias=bias, binary_weight=fc.weight.data, binary_bias=fc.bias, bitwidth=bitwidth_tuple, keep_res="input",  more_res="input", rounding=rounding).to(device)
         ifc_o = ifc(input)
         
         if abs_err is True:
             ufc_err = (ufc_o - fc_o)
+            cfc_err = (cfc_o - fc_o)
             ofc_err = (ofc_o - fc_o)
             ifc_err = (ifc_o - fc_o)
         else:
             ufc_err = (ufc_o - fc_o) / fc_o
+            cfc_err = (cfc_o - fc_o) / fc_o
             ofc_err = (ofc_o - fc_o) / fc_o
             ifc_err = (ifc_o - fc_o) / fc_o
         
@@ -65,6 +79,11 @@ def test(rounding = "round", abs_err = True):
         ufc_err_max_list.append(np.nanmax(ufc_err.cpu().detach().numpy()))
         ufc_err_mean_list.append(np.nanmean(np.abs(ufc_err.cpu().detach().numpy())))
         ufc_err_std_list.append(np.nanstd(ufc_err.cpu().detach().numpy()))
+
+        cfc_err_min_list.append(np.nanmin(cfc_err.cpu().detach().numpy()))
+        cfc_err_max_list.append(np.nanmax(cfc_err.cpu().detach().numpy()))
+        cfc_err_mean_list.append(np.nanmean(np.abs(cfc_err.cpu().detach().numpy())))
+        cfc_err_std_list.append(np.nanstd(cfc_err.cpu().detach().numpy()))
         
         ofc_err_min_list.append(np.nanmin(ofc_err.cpu().detach().numpy()))
         ofc_err_max_list.append(np.nanmax(ofc_err.cpu().detach().numpy()))
@@ -77,15 +96,20 @@ def test(rounding = "round", abs_err = True):
         ifc_err_std_list.append(np.nanstd(ifc_err.cpu().detach().numpy()))
         
         x_label.append(2**(bitwidth-1))
-    return ufc_err_min_list, ufc_err_max_list, ufc_err_mean_list, ufc_err_std_list, ofc_err_min_list, ofc_err_max_list, ofc_err_mean_list, ofc_err_std_list, ifc_err_min_list, ifc_err_max_list, ifc_err_mean_list, ifc_err_std_list, x_label
+    return ufc_err_min_list, ufc_err_max_list, ufc_err_mean_list, ufc_err_std_list, cfc_err_min_list, cfc_err_max_list, cfc_err_mean_list, cfc_err_std_list, ofc_err_min_list, ofc_err_max_list, ofc_err_mean_list, ofc_err_std_list, ifc_err_min_list, ifc_err_max_list, ifc_err_mean_list, ifc_err_std_list, x_label
 
 
 # %%
 rounding = "round"
 abs_err = True
-ufc_err_min_list, ufc_err_max_list, ufc_err_mean_list, ufc_err_std_list, ofc_err_min_list, ofc_err_max_list, ofc_err_mean_list, ofc_err_std_list, ifc_err_min_list, ifc_err_max_list, ifc_err_mean_list, ifc_err_std_list, x_label = test(rounding, abs_err)
+et_cycle = 14
+ufc_err_min_list, ufc_err_max_list, ufc_err_mean_list, ufc_err_std_list, cfc_err_min_list, cfc_err_max_list, cfc_err_mean_list, cfc_err_std_list, ofc_err_min_list, ofc_err_max_list, ofc_err_mean_list, ofc_err_std_list, ifc_err_min_list, ifc_err_max_list, ifc_err_mean_list, ifc_err_std_list, x_label = test(rounding, abs_err, et_cycle)
 print(ufc_err_mean_list)
 print(ufc_err_std_list)
+print()
+
+print(cfc_err_mean_list)
+print(cfc_err_std_list)
 print()
 
 print(ofc_err_mean_list)
@@ -118,6 +142,11 @@ stds1 = np.array(ufc_err_std_list)
 mins1 = np.array(ufc_err_min_list)
 maxs1 = np.array(ufc_err_max_list)
 
+means_ = np.array(cfc_err_mean_list)
+stds_ = np.array(cfc_err_std_list)
+mins_ = np.array(cfc_err_min_list)
+maxs_ = np.array(cfc_err_max_list)
+
 means2 = np.array(ofc_err_mean_list)
 stds2 = np.array(ofc_err_std_list)
 mins2 = np.array(ofc_err_min_list)
@@ -136,10 +165,13 @@ fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 ax.plot(x, means1, "-o", label="uSystolic", color="#7A81FF", ms=4)
 ax.fill_between(x, means1-stds1, means1+stds1, alpha=0.3, color="#7A81FF", edgecolor=None)
 
-ax.plot(x, means2, "-s", label="FXP-o-res", color="#FF7F7F", ms=4)
-ax.fill_between(x, means2-stds2, means2+stds2, alpha=0.3, color="#FF7F7F", edgecolor=None)
+ax.plot(x, means_, "-o", label="Temporal-LUT", color="#6ACCBC", ms=4)
+ax.fill_between(x, means_-stds_, means_+stds_, alpha=0.3, color="#6ACCBC", edgecolor=None)
 
-ax.plot(x, means3, "-^", label="FXP-i-res", color="#D783FF", ms=4)
+# ax.plot(x, means2, "-s", label="FXP-o-res", color="#FF7F7F", ms=4)
+# ax.fill_between(x, means2-stds2, means2+stds2, alpha=0.3, color="#FF7F7F", edgecolor=None)
+
+ax.plot(x, means3, "-^", label="FXP", color="#D783FF", ms=4)
 ax.fill_between(x, means3-stds3, means3+stds3, alpha=0.3, color="#D783FF", edgecolor=None)
 
 ax.set_xticks(x)
@@ -151,15 +183,21 @@ ax.legend(loc="upper right", ncol=3, frameon=False)
 
 fig.tight_layout()
 plt.show()
-fig.savefig("test_kernel_linear_fxp_hub_compare_abs_err.pdf", bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+path = "/home/zhewen/Repo/UnarySim/test/kernel/"
+fig.savefig(path + f"test_kernel_linear_fxp_hub_tlut_compare_abs_err_et{et_cycle}.pdf", bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 
 # %%
+et_cycle = 14
 rounding = "round"
 abs_err = False
-ufc_err_min_list, ufc_err_max_list, ufc_err_mean_list, ufc_err_std_list, ofc_err_min_list, ofc_err_max_list, ofc_err_mean_list, ofc_err_std_list, ifc_err_min_list, ifc_err_max_list, ifc_err_mean_list, ifc_err_std_list, x_label = test(rounding, abs_err)
+ufc_err_min_list, ufc_err_max_list, ufc_err_mean_list, ufc_err_std_list, cfc_err_min_list, cfc_err_max_list, cfc_err_mean_list, cfc_err_std_list, ofc_err_min_list, ofc_err_max_list, ofc_err_mean_list, ofc_err_std_list, ifc_err_min_list, ifc_err_max_list, ifc_err_mean_list, ifc_err_std_list, x_label = test(rounding, abs_err, et_cycle)
 print(ufc_err_mean_list)
 print(ufc_err_std_list)
+print()
+
+print(cfc_err_mean_list)
+print(cfc_err_std_list)
 print()
 
 print(ofc_err_mean_list)
@@ -192,6 +230,11 @@ stds1 = np.array(ufc_err_std_list)
 mins1 = np.array(ufc_err_min_list)
 maxs1 = np.array(ufc_err_max_list)
 
+means_ = np.array(cfc_err_mean_list)
+stds_ = np.array(cfc_err_std_list)
+mins_ = np.array(cfc_err_min_list)
+maxs_ = np.array(cfc_err_max_list)
+
 means2 = np.array(ofc_err_mean_list)
 stds2 = np.array(ofc_err_std_list)
 mins2 = np.array(ofc_err_min_list)
@@ -210,10 +253,13 @@ fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 ax.plot(x, means1, "-o", label="uSystolic", color="#7A81FF", ms=4)
 ax.fill_between(x, means1-stds1, means1+stds1, alpha=0.3, color="#7A81FF", edgecolor=None)
 
-ax.plot(x, means2, "-s", label="FXP-o-res", color="#FF7F7F", ms=4)
-ax.fill_between(x, means2-stds2, means2+stds2, alpha=0.3, color="#FF7F7F", edgecolor=None)
+ax.plot(x, means_, "-o", label="Temporal-LUT", color="#6ACCBC", ms=4)
+ax.fill_between(x, means_-stds_, means_+stds_, alpha=0.3, color="#6ACCBC", edgecolor=None)
 
-ax.plot(x, means3, "-^", label="FXP-i-res", color="#D783FF", ms=4)
+# ax.plot(x, means2, "-s", label="FXP-o-res", color="#FF7F7F", ms=4)
+# ax.fill_between(x, means2-stds2, means2+stds2, alpha=0.3, color="#FF7F7F", edgecolor=None)
+
+ax.plot(x, means3, "-^", label="FXP", color="#D783FF", ms=4)
 ax.fill_between(x, means3-stds3, means3+stds3, alpha=0.3, color="#D783FF", edgecolor=None)
 
 ax.set_xticks(x)
@@ -225,7 +271,8 @@ ax.set_yticklabels(["0.00", "0.40", "0.80"])
 
 fig.tight_layout()
 plt.show()
-fig.savefig("test_kernel_linear_fxp_hub_compare_rel_err.pdf", bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+path = "/home/zhewen/Repo/UnarySim/test/kernel/"
+fig.savefig(path + f"test_kernel_linear_fxp_hub_tlut_compare_rel_err_et{et_cycle}.pdf", bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 
 # %%
