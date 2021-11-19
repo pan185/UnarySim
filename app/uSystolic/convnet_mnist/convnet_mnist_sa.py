@@ -110,8 +110,6 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
-    parser.add_argument('--save-model', action='store_true', default=False,
-                        help='For Saving the current Model')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -132,9 +130,9 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
         ])
-    dataset1 = datasets.MNIST('D:\data\mnist', train=True, download=True,
+    dataset1 = datasets.MNIST('/home/zhewen/data/mnist', train=True, download=True,
                        transform=transform)
-    dataset2 = datasets.MNIST('D:\data\mnist', train=False,
+    dataset2 = datasets.MNIST('/home/zhewen/data/mnist', train=False,
                        transform=transform)
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)

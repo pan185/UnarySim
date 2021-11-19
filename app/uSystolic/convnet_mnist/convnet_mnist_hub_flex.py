@@ -7,20 +7,33 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 from six.moves import urllib
+from UnarySim.kernel.conv import HUBConv2d_flex
+from UnarySim.kernel.linear import HUBLinear_flex
 
 opener = urllib.request.build_opener()
 opener.addheaders = [('User-agent', 'Mozilla/5.0')]
 urllib.request.install_opener(opener)
 
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, state_dict=None, bitwidth=None, sa=True):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.dropout1 = nn.Dropout(0.25)
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(9216, 128)
-        self.fc2 = nn.Linear(128, 10)
+        if sa is True:
+            param_list = [param for param in state_dict]
+            print("load model parameters: ", param_list)
+            state_list = [state_dict[param] for param in param_list]
+            self.conv1 = HUBConv2d_flex(1, 32, 3, 1, binary_weight=state_list[0], binary_bias=state_list[1], bitwidth=bitwidth[0])
+            self.conv2 = HUBConv2d_flex(32, 64, 3, 1, binary_weight=state_list[2], binary_bias=state_list[3], bitwidth=bitwidth[1])
+            self.dropout1 = nn.Dropout(0.25)
+            self.dropout2 = nn.Dropout(0.5)
+            self.fc1 = HUBLinear_flex(9216, 128, binary_weight=state_list[4], binary_bias=state_list[5], bitwidth=bitwidth[2])
+            self.fc2 = HUBLinear_flex(128, 10, binary_weight=state_list[6], binary_bias=state_list[7], bitwidth=bitwidth[3])
+        else:
+            self.conv1 = nn.Conv2d(1, 32, 3, 1)
+            self.conv2 = nn.Conv2d(32, 64, 3, 1)
+            self.dropout1 = nn.Dropout(0.25)
+            self.dropout2 = nn.Dropout(0.5)
+            self.fc1 = nn.Linear(9216, 128)
+            self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -79,12 +92,16 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=16, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--epochs', type=int, default=14, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
                         help='learning rate (default: 1.0)')
+    parser.add_argument('--inp-bw', type=int, default=5, metavar='inp_bw',
+                        help='input bitwidth')
+    parser.add_argument('--wght-bw', type=int, default=9, metavar='wght_bw',
+                        help='wght bitwidth')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -95,8 +112,6 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
-    parser.add_argument('--save-model', action='store_true', default=False,
-                        help='For Saving the current Model')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -123,19 +138,22 @@ def main():
                        transform=transform)
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+    
+    checkpoint = torch.load("mnist_cnn.pt", map_location=device)
 
-    model = Net().to(device)
-    optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
+    bw_tuple = (args.inp_bw, args.wght_bw)
 
-    scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
-    for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, epoch)
-        test(model, device, test_loader)
-        scheduler.step()
+    bitwidth_list = [bw_tuple for x in range(4)]
 
-    if args.save_model:
-        torch.save(model.state_dict(), "mnist_cnn.pt")
-
+    print("test hub_flex model without retraining")
+    model = Net(state_dict=checkpoint, bitwidth=bitwidth_list, sa=True).to(device)
+    test(model, device, test_loader)
+    
+    print("test pretrained fp model")
+    model = Net(state_dict=checkpoint, bitwidth=bitwidth_list, sa=False).to(device)
+    model.load_state_dict(checkpoint)
+    test(model, device, test_loader)
+    
 
 if __name__ == '__main__':
     main()

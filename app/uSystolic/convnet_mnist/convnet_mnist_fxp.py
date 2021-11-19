@@ -98,8 +98,10 @@ def main():
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
                         help='learning rate (default: 1.0)')
-    parser.add_argument('--bitwidth', type=int, default=6, metavar='bitwidth',
-                        help='bitwidth')
+    parser.add_argument('--inp-bw', type=int, default=5, metavar='inp_bw',
+                        help='input bitwidth')
+    parser.add_argument('--wght-bw', type=int, default=9, metavar='wght_bw',
+                        help='wght bitwidth')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -110,11 +112,9 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
-    parser.add_argument('--save-model', action='store_true', default=False,
-                        help='For Saving the current Model')
-    parser.add_argument('--ores', dest='ores', action='store_true',
+    parser.add_argument('--ores', dest='ores', action='store_true', default=False,
                         help='set output resolution')
-    parser.add_argument('--wmres', dest='wmres', action='store_true',
+    parser.add_argument('--wmres', dest='wmres', action='store_true', default=False,
                         help='set more resolution to w')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
@@ -136,16 +136,19 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
         ])
-    dataset1 = datasets.MNIST('D:\data\mnist', train=True, download=True,
+    dataset1 = datasets.MNIST('/home/zhewen/data/mnist', train=True, download=True,
                        transform=transform)
-    dataset2 = datasets.MNIST('D:\data\mnist', train=False,
+    dataset2 = datasets.MNIST('/home/zhewen/data/mnist', train=False,
                        transform=transform)
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
     
     checkpoint = torch.load("mnist_cnn.pt", map_location=device)
-    bitwidth_list = [args.bitwidth for x in range(4)]
-    print("test sa model without retraining")
+
+    bw_tuple = (args.inp_bw, args.wght_bw)
+
+    bitwidth_list = [bw_tuple for x in range(4)]
+    print("test fxp model without retraining")
     model = Net(state_dict=checkpoint, bitwidth=bitwidth_list, sa=True, keep_res="output" if args.ores else "input", more_res="weight" if args.wmres else "input").to(device)
     test(model, device, test_loader)
     
