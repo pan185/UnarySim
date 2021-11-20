@@ -1388,7 +1388,7 @@ class TlutLinearFunction(torch.autograd.Function):
         torch.round(input >> rshift_input, out=input_round)
         
         torch.clamp(input_round.unsqueeze_(1), bot_input, top_input, out=input_round)
-        print(f"Input clamped to {bot_input}, {top_input}")
+        # print(f"Input clamped to {bot_input}, {top_input}")
         
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
         # weight preparation

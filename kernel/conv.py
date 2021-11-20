@@ -721,7 +721,7 @@ class TlutConv2d(torch.nn.Conv2d):
             self.input_clamp_val = 2**self.bw_input
             if self.cycle != None and self.cycle < 2**self.bw_input-1:
                 self.input_clamp_val = self.cycle
-            print("input_clamp_val=", self.input_clamp_val)
+            # print("input_clamp_val=", self.input_clamp_val)
 
             # Precompute output kernel size based on filter size, padding, dilation, stride, etc.
             # all data are in NCHW
