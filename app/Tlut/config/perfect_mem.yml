@@ -1,0 +1,33 @@
+arch:
+  arithmetic:
+    dimA: 128 
+    dimC: 128
+    bwA:
+    bwC:
+  storage:
+  - name: OutputBuffer
+    entries: 64
+    instances: 128
+    meshX: 16
+    word-bits: 24
+    cluster-size: 8
+    network-word-bits: 16
+    num-ports: 2
+    num-banks: 2
+  - name: WeightBuffer
+    entries: 16384
+    instances: 128
+    meshX: 16
+    word-bits: 8
+    block-size: 8
+    num-ports: 1
+    num-banks: 8
+  - name: InputBuffer
+    entries: 4096 
+    instances: 16
+    meshX: 16
+    word-bits: 8
+    block-size: 8
+    num-ports: 2
+    num-banks: 1
+
