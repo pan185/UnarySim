@@ -178,8 +178,9 @@ ax.fill_between(x, means3-stds3, means3+stds3, alpha=0.3, color="#D783FF", edgec
 ax.set_xticks(x)
 ax.set_xticklabels(x_label)
 ax.set_yscale('linear')
-ax.set_yticks([0, 0.01, 0.02])
-ax.set_yticklabels(["0.00", "0.01", "0.02"])
+ax.set_yticks([0, 0.02, 0.04, 0.06])
+ax.set_yticklabels(["0.00", "0.02", "0.04", "0.06"])
+ax.set_ylim(0, 0.07)
 ax.legend(loc="upper right", ncol=3, frameon=False)
 
 fig.tight_layout()

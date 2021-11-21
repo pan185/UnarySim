@@ -177,14 +177,15 @@ ax.fill_between(x, means3-stds3, means3+stds3, alpha=0.3, color="#D783FF", edgec
 ax.set_xticks(x)
 ax.set_xticklabels(x_label)
 ax.set_yscale('linear')
-ax.set_yticks([0, 0.01, 0.02])
-ax.set_yticklabels(["0.00", "0.01", "0.02"])
+ax.set_yticks([0, 0.005, 0.01, 0.015])
+ax.set_yticklabels(["0.00", "0.005", "0.01", "0.015"])
+ax. set_ylim(0, 0.015)
 ax.legend(loc="upper right", ncol=3, frameon=False)
 
 fig.tight_layout()
 plt.show()
 path = "/home/zhewen/Repo/UnarySim/test/kernel/"
-fig.savefig(path + f"test_kernel_linear_fxp_hub_tlut_compare_abs_err_et{et_cycle}.pdf", bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+fig.savefig(path + f"test_kernel_linear_fxp_hub_tlut_compare_abs_err_et{et_cycle}_wght.pdf", bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 
 # %%
@@ -272,7 +273,7 @@ ax.set_yticklabels(["0.00", "0.40", "0.80"])
 fig.tight_layout()
 plt.show()
 path = "/home/zhewen/Repo/UnarySim/test/kernel/"
-fig.savefig(path + f"test_kernel_linear_fxp_hub_tlut_compare_rel_err_et{et_cycle}.pdf", bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+fig.savefig(path + f"test_kernel_linear_fxp_hub_tlut_compare_rel_err_et{et_cycle}_wght.pdf", bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 
 # %%
