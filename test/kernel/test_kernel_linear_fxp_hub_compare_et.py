@@ -182,6 +182,8 @@ ax.set_yticks([0, 0.02, 0.04, 0.06])
 ax.set_yticklabels(["0.00", "0.02", "0.04", "0.06"])
 ax.set_ylim(0, 0.07)
 ax.legend(loc="upper right", ncol=3, frameon=False)
+ax.set_ylabel("Absolute Error")
+ax.set_xlabel("Termination Cycle")
 
 fig.tight_layout()
 plt.show()

@@ -124,6 +124,10 @@ def plot_fig(list_,str_in):
         ax.set_yticklabels(["85", "90", "95", "100"])
         ax.set_ylim(85, 103)
 
+    ax.set_xlabel("Early Termination Cycle")
+    if str_in == 'loss': ax.set_ylabel("NLL Loss")
+    else: ax.set_ylabel("Accuracy")
+
     fig.tight_layout()
     plt.show()
     path = "/home/zhewen/Repo/UnarySim/app/uSystolic/convnet_mnist/"
