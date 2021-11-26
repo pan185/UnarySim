@@ -1,0 +1,24 @@
+arch:
+  arithmetic:
+    dimA: 64
+    dimC: 64
+    bwA: 4
+    bwC: 8
+    instances: 1
+  storage:
+  - name: OutputBuffer
+    bw: 32
+    entries: 16384
+    instances: 1
+    layout: NKPQ
+  - name: WeightBuffer
+    bw: 8
+    entries: 128
+    instances: 1
+    layout: KRSC
+  - name: InputBuffer
+    bw: 4
+    entries: 128
+    instances: 1
+    layout: NWHC
+
