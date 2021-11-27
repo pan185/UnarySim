@@ -17,15 +17,14 @@ def list_to_comma_separated_str_with_padding(_list, dim_hw):
     # for item in _list: _str += f'{item},'
     for i in range(dim_hw): 
         if i < len(_list): _str += f'{_list[i]},'
-        else: 
-            _str += 'nan,'
+        else: _str += 'nan,'
     _str += '\n'
     return _str
 
 def im2col_addr(input_layout, patch_P, patch_Q, patch_N, pixel, pad, 
-    R, S, C, N, Wdilation, Hdilation, Wstride, Hstride):
+    R, S, C, N, Wdilation, Hdilation, Wstride, Hstride, W, H):
     # RSC along a col, pixel is the col index
-    assert input_layout == 'NWHC' #TODO: implemet flex input layout
+    assert input_layout == 'NCHW' #TODO: implemet flex input layout
     # pixel = 9 # set override val for debugging
     c_index = int(pixel/(R*S))
     s_index = int(pixel/R % R)
@@ -41,8 +40,8 @@ def im2col_addr(input_layout, patch_P, patch_Q, patch_N, pixel, pad,
     w_index = w_from_P + r_index - w_from_P_index
     h_index = h_from_Q + s_index - h_from_Q_index
 
-    # print(f'{w_index}, {h_index}, {c_index}')
-    addr = (R*S)*c_index + (R)*h_index + (1)*w_index
-    # print(addr)
+    print(f'{w_index}, {h_index}, {c_index}')
+    addr = patch_N * (W*H*C) + (W*H)*c_index + (W)*h_index + (1)*w_index
+    print(addr)
     
     return addr

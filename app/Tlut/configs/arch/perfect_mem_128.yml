@@ -20,5 +20,5 @@ arch:
     bw: 4
     entries: 128
     instances: 1
-    layout: NWHC
+    layout: NCHW
 

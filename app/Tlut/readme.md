@@ -5,3 +5,4 @@ Architecture taken from CoSA: https://github.com/ucb-bar/cosa
 # Dependencies
 
 - pyyaml
+- json

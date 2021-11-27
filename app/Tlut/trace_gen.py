@@ -120,55 +120,103 @@ def cg_profile(prob, arch, output_dir, dataflow):
     wght_base=1000000 # weight base addr, in byte
     input_base=0 # input feature map base addr, in byte
 
+    cp_n = 0; cp_p = 0; cp_q = 0; i = 0;# initialize
+    cp_k = 0 # initialize
     cycle = 0
     i_pass = 0 # index of passes
+    iter_per_pass = R*S*C
 
-    # load wght
-    wght_addr = []
-    if hw_w < WGHT: w_bound = hw_w
-    else: w_bound = WGHT
-    for i in range(w_bound):
-        wght_addr.append(wght_base + i*R*S*C) # TODO: fix flex weight memory layout
-    wght_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(wght_addr, hw_w)
-    rd_outfile.write(wght_rd)
+    k_set = set()
+    nqp_set = set();
 
-    # load input
-    input_addr = []
-    if hw_i < INP: 
-        i_bound = hw_i
-        if hw_i < P:
-            p_bound = hw_i
-            q_bound = 1
-            n_bound = 1
-        else: 
-            p_bound = P
-            if hw_i < P*Q:
-                q_bound = int(hw_i/P)
+    for i_pass in range(iter_per_pass):
+        # ***************load wght***************
+        wght_addr = []
+        if hw_w < WGHT: w_bound = hw_w
+        else: w_bound = WGHT
+        # for i in range(w_bound):
+        _k =  0
+        while _k < hw_w:
+            wght_addr.append(wght_base + (cp_k + _k)*R*S*C + i_pass) # TODO: fix flex weight memory layout
+            k_set.add(_k)
+            _k += 1
+            if i_pass == R*S*C-1: cp_k = _k
+            if _k >= WGHT: break
+
+        wght_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(wght_addr, hw_w)
+        rd_outfile.write(wght_rd)
+
+        # *************load input***************
+        input_addr = []
+        if hw_i < INP: 
+            i_bound = hw_i
+            if hw_i < P:
+                p_bound = hw_i
+                q_bound = 1
                 n_bound = 1
             else: 
-                q_bound = Q
-                n_bound = int(hw_i/(P*Q))
-    else: 
-        i_bound = INP
-        p_bound = P # p subbound
-        q_bound = Q # q subbound
-        n_bound = N # n subbound
-    print(f'Debugging input bounds\np:{p_bound}, q:{q_bound}, n:{n_bound}')
-    # image to column address indexing
-    input_layout = arch.storage[arch.mem_idx['InputBuffer']]['layout']
-    print(f'Debugging input layout: {input_layout}')
-    input_addr = []
-    for p in range(p_bound):
-        for q in range(q_bound):
-            for n in range(n_bound):
-                new_addr = input_base + utils.im2col_addr( #TODO: fix flex input memory layout
-                    input_layout=input_layout,
-                    patch_P=p, patch_Q=q, patch_N=n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
-                    Wdilation=Wdilation, Hdilation=Hdilation, Wstride=Wstride, Hstride=Hstride)
-                input_addr.append(new_addr)
-    input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
-    rd_outfile.write(input_rd)
+                p_bound = P
+                if hw_i < P*Q:
+                    q_bound = int(hw_i/P)
+                    n_bound = 1
+                else: 
+                    q_bound = Q
+                    n_bound = int(hw_i/(P*Q))
+        else: 
+            i_bound = INP
+            p_bound = P # p subbound
+            q_bound = Q # q subbound
+            n_bound = N # n subbound
+        print(f'Debugging input bounds\np:{p_bound}, q:{q_bound}, n:{n_bound}')
+        # image to column address indexing
+        input_layout = arch.storage[arch.mem_idx['InputBuffer']]['layout']
+        print(f'Debugging input layout: {input_layout}')
+        # for n in range(n_bound):
+        #     for q in range(q_bound):
+        #         for p in range(p_bound):
+        i = 0
+        while i < hw_i:
+            p = cp_p; q = cp_q; n = cp_n;
+            new_addr = input_base + utils.im2col_addr(
+                input_layout=input_layout,
+                patch_P=p, patch_Q=q, patch_N=n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
+                Wdilation=Wdilation, Hdilation=Hdilation, Wstride=Wstride, Hstride=Hstride, W=W, H=H)
+            nqp_set.add((n,q,p))
+            i += 1
+            if i_pass == R*S*C-1: cp_p += 1
+            if cp_p == P: 
+                cp_q += 1
+                cp_p = 0
+            if cp_q == Q:
+                cp_n += 1
+                cp_q = 0
+            if cp_n == N:
+                break
+            input_addr.append(new_addr)
+        input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
+        rd_outfile.write(input_rd)
+        
 
+        cycle += single_pass_latency
+    print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+    # end for for 1 pass
+    
+    # ***************write output***************
+    # cycle += single_pass_latency * R * S * C
+    output_addr = []
+    output_layout = arch.storage[arch.mem_idx['OutputBuffer']]['layout']
+    print(f'Debugging output layout: {output_layout}')
+    for nqp_tuple in nqp_set:
+        _n = nqp_tuple[0]; _q = nqp_tuple[1]; _p = nqp_tuple[2]
+        for _k in k_set:
+            if output_layout == 'NKPQ': output_addr.append(_n * K*P*Q + _k * P*Q + _p * Q + _q)
+            elif output_layout == 'NKQP': output_addr.append(_n * K*P*Q + _k * P*Q + _q * P + _p)
+            elif output_layout == 'NQPK': output_addr.append(_n * K*P*Q + _q * P*K + _p * K + _k)
+            elif output_layout == 'NPQK': output_addr.append(_n * K*P*Q + _p * Q*K + _q * K + _k)
+            else: print(f'Does not support output memory layout of {output_layout}'); exit()
+    output_wr = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(output_addr, hw_i*hw_w)
+    wr_outfile.write(output_wr)
+    
 
 def run_trace_gen(prob_path, arch_path, output_path, dataflow):
     prob = Prob(prob_path)
