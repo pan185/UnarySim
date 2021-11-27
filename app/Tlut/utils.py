@@ -40,8 +40,8 @@ def im2col_addr(input_layout, patch_P, patch_Q, patch_N, pixel, pad,
     w_index = w_from_P + r_index - w_from_P_index
     h_index = h_from_Q + s_index - h_from_Q_index
 
-    print(f'{w_index}, {h_index}, {c_index}')
+    # print(f'{w_index}, {h_index}, {c_index}')
     addr = patch_N * (W*H*C) + (W*H)*c_index + (W)*h_index + (1)*w_index
-    print(addr)
+    # print(addr)
     
     return addr

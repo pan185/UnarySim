@@ -176,30 +176,31 @@ def cg_profile(prob, arch, output_dir, dataflow):
         #         for p in range(p_bound):
         i = 0
         while i < hw_i:
-            p = cp_p; q = cp_q; n = cp_n;
+            if i == 0:_p = cp_p; _q = cp_q; _n = cp_n;
             new_addr = input_base + utils.im2col_addr(
                 input_layout=input_layout,
-                patch_P=p, patch_Q=q, patch_N=n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
+                patch_P=_p, patch_Q=_q, patch_N=_n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
                 Wdilation=Wdilation, Hdilation=Hdilation, Wstride=Wstride, Hstride=Hstride, W=W, H=H)
-            nqp_set.add((n,q,p))
+            nqp_set.add((_n,_q,_p))
             i += 1
-            if i_pass == R*S*C-1: cp_p += 1
-            if cp_p == P: 
-                cp_q += 1
-                cp_p = 0
-            if cp_q == Q:
-                cp_n += 1
-                cp_q = 0
-            if cp_n == N:
+            _p += 1
+            if _p == P: 
+                _q += 1
+                _p = 0
+            if _q == Q:
+                _n += 1
+                _q = 0
+            if _n == N:
                 break
             input_addr.append(new_addr)
+            # save checkpoint value
+            if i_pass == R*S*C-1: cp_p = _p; cp_n = _n; cp_q = _q
         input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
         rd_outfile.write(input_rd)
         
-
         cycle += single_pass_latency
     print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
-    # end for for 1 pass
+    # end for for 1 pass (R*S*C)
     
     # ***************write output***************
     # cycle += single_pass_latency * R * S * C
@@ -209,10 +210,10 @@ def cg_profile(prob, arch, output_dir, dataflow):
     for nqp_tuple in nqp_set:
         _n = nqp_tuple[0]; _q = nqp_tuple[1]; _p = nqp_tuple[2]
         for _k in k_set:
-            if output_layout == 'NKPQ': output_addr.append(_n * K*P*Q + _k * P*Q + _p * Q + _q)
-            elif output_layout == 'NKQP': output_addr.append(_n * K*P*Q + _k * P*Q + _q * P + _p)
-            elif output_layout == 'NQPK': output_addr.append(_n * K*P*Q + _q * P*K + _p * K + _k)
-            elif output_layout == 'NPQK': output_addr.append(_n * K*P*Q + _p * Q*K + _q * K + _k)
+            if output_layout == 'NKPQ': output_addr.append(output_base + _n * K*P*Q + _k * P*Q + _p * Q + _q)
+            elif output_layout == 'NKQP': output_addr.append(output_base + _n * K*P*Q + _k * P*Q + _q * P + _p)
+            elif output_layout == 'NQPK': output_addr.append(output_base + _n * K*P*Q + _q * P*K + _p * K + _k)
+            elif output_layout == 'NPQK': output_addr.append(output_base + _n * K*P*Q + _p * Q*K + _q * K + _k)
             else: print(f'Does not support output memory layout of {output_layout}'); exit()
     output_wr = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(output_addr, hw_i*hw_w)
     wr_outfile.write(output_wr)
