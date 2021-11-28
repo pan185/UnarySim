@@ -87,7 +87,7 @@ def cg_profile(prob, arch, dtf, output_dir):
 
     # parse coarse grained stats to json file
     output_base = pathlib.Path(output_path).resolve()
-    output_dir = output_base / arch.config_str() / prob.config_str()
+    output_dir = output_base / arch.config_str() / prob.config_str() / dtf.config_str()
     # print(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     prefix = 'stats'
@@ -123,6 +123,7 @@ def cg_profile(prob, arch, dtf, output_dir):
     H = (Q-1)*Hstride + S + 2 * PAD 
     INP = N * P * Q
 
+    # FIXME: fix memory granularity
     # address base (byte addressable) Note: different from uSystolic
     output_base=2000000 # output feature map base addr, in byte
     wght_base=1000000 # weight base addr, in byte
@@ -136,86 +137,166 @@ def cg_profile(prob, arch, dtf, output_dir):
     i_pass = 0 # index of passes
     iter_per_pass = R*S*C
     print(f'input tiling={tiling_factors[1]}, wght tiling={tiling_factors[0]}, RSC={iter_per_pass}')
-    assert dtf.tileStationary == 'W' # FIXME: support flexible streaming order
 
-    # 2-layer for loop for IW tiles
-    for w_tile in range(tiling_factors[0]):
+    if dtf.tileStationary == 'W':
+        # 2-layer for loop for IW tiles
+        for w_tile in range(tiling_factors[0]):
+            for i_tile in range(tiling_factors[1]):
+                k_set = set()
+                nqp_set = set()
+
+                for i_pass in range(iter_per_pass):
+                    # ***************load wght***************
+                    wght_addr = []
+                    _k =  0
+                    while _k < hw_w:
+                        wght_addr.append(wght_base + (cp_k + _k)*R*S*C + i_pass)
+                        k_set.add(cp_k +_k)
+                        _k += 1
+                        if _k + cp_k >= K: break # Note: Unoptimized mapping, no packing for underutilized w vector
+
+                    wght_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(wght_addr, hw_w)
+                    rd_outfile.write(wght_rd)
+
+                    # ***************load input***************
+                    input_addr = []
+                    # image to column address indexing
+                    input_layout = arch.storage[arch.mem_idx['InputBuffer']]['layout']
+                    # print(f'Debugging input layout: {input_layout}')
+
+                    i = 0
+                    while i < hw_i: # Spatially load across hw dimension
+                        if i == 0:_p = cp_p; _q = cp_q; _n = cp_n;
+                        if _p * _q * _n > P*Q*N: break
+                        new_addr = input_base + utils.im2col_addr(
+                            input_layout=input_layout,
+                            patch_P=_p, patch_Q=_q, patch_N=_n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
+                            Wdilation=Wdilation, Hdilation=Hdilation, Wstride=Wstride, Hstride=Hstride, W=W, H=H)
+                        nqp_set.add((_n,_q,_p))
+                        i += 1
+
+                        # update _p, _q, _n (roll over if necessary)
+                        _p += 1
+                        if _p == P: 
+                            _q += 1
+                            _p = 0
+                        if _q == Q:
+                            _n += 1
+                            _q = 0
+                        if _n == N:
+                            break
+
+                        input_addr.append(new_addr)
+                    input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
+                    rd_outfile.write(input_rd)
+                    
+                    cycle += single_pass_latency
+                print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+                # end for for 1 pass (R*S*C)
+
+                # ***************write output***************
+                output_addr = []
+                output_layout = arch.storage[arch.mem_idx['OutputBuffer']]['layout']
+                # print(f'Debugging output layout: {output_layout}')
+                for nqp_tuple in nqp_set:
+                    _n_tuple = nqp_tuple[0]; _q_tuple = nqp_tuple[1]; _p_tuple = nqp_tuple[2]
+                    for _k_tuple in k_set:
+                        if output_layout == 'NKPQ': output_addr.append(output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _p_tuple * Q + _q_tuple)
+                        elif output_layout == 'NKQP': output_addr.append(output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _q_tuple * P + _p_tuple)
+                        elif output_layout == 'NQPK': output_addr.append(output_base + _n_tuple * K*P*Q + _q_tuple * P*K + _p_tuple * K + _k_tuple)
+                        elif output_layout == 'NPQK': output_addr.append(output_base + _n_tuple * K*P*Q + _p_tuple * Q*K + _q_tuple * K + _k_tuple)
+                        else: print(f'Does not support output memory layout of {output_layout}'); exit()
+                output_wr = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(output_addr, hw_i*hw_w)
+                wr_outfile.write(output_wr)
+
+                # update checkpoint values for input
+                cp_p = _p; cp_n = _n; cp_q = _q
+
+            # end for for 1 inner streaming tile; By default a input tile
+
+            # update checkpoint values for weight
+            cp_k = _k
+            cp_p = 0; cp_n = 0; cp_q = 0
+
+    else: # I stationary streaming
+        # 2-layer for loop for IW tiles
         for i_tile in range(tiling_factors[1]):
-            k_set = set()
-            nqp_set = set()
+            for w_tile in range(tiling_factors[0]):
+                k_set = set()
+                nqp_set = set()
 
-            for i_pass in range(iter_per_pass):
-                # ***************load wght***************
-                wght_addr = []
-                _k =  0
-                while _k < hw_w:
-                    wght_addr.append(wght_base + (cp_k + _k)*R*S*C + i_pass)
-                    k_set.add(cp_k +_k)
-                    _k += 1
-                    if _k + cp_k >= K: break # Note: Unoptimized mapping, no packing for underutilized w vector
+                for i_pass in range(iter_per_pass):
+                    # ***************load wght***************
+                    wght_addr = []
+                    _k =  0
+                    while _k < hw_w:
+                        wght_addr.append(wght_base + (cp_k + _k)*R*S*C + i_pass)
+                        k_set.add(cp_k +_k)
+                        _k += 1
+                        if _k + cp_k >= K: break # Note: Unoptimized mapping, no packing for underutilized w vector
 
-                wght_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(wght_addr, hw_w)
-                rd_outfile.write(wght_rd)
+                    wght_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(wght_addr, hw_w)
+                    rd_outfile.write(wght_rd)
 
-                # ***************load input***************
-                input_addr = []
-                # image to column address indexing
-                input_layout = arch.storage[arch.mem_idx['InputBuffer']]['layout']
-                # print(f'Debugging input layout: {input_layout}')
+                    # ***************load input***************
+                    input_addr = []
+                    # image to column address indexing
+                    input_layout = arch.storage[arch.mem_idx['InputBuffer']]['layout']
+                    # print(f'Debugging input layout: {input_layout}')
 
-                i = 0
-                while i < hw_i: # Spatially load across hw dimension
-                    if i == 0:_p = cp_p; _q = cp_q; _n = cp_n;
-                    if _p * _q * _n > P*Q*N: break
-                    new_addr = input_base + utils.im2col_addr(
-                        input_layout=input_layout,
-                        patch_P=_p, patch_Q=_q, patch_N=_n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
-                        Wdilation=Wdilation, Hdilation=Hdilation, Wstride=Wstride, Hstride=Hstride, W=W, H=H)
-                    nqp_set.add((_n,_q,_p))
-                    i += 1
+                    i = 0
+                    while i < hw_i: # Spatially load across hw dimension
+                        if i == 0:_p = cp_p; _q = cp_q; _n = cp_n;
+                        if _p * _q * _n > P*Q*N: break
+                        new_addr = input_base + utils.im2col_addr(
+                            input_layout=input_layout,
+                            patch_P=_p, patch_Q=_q, patch_N=_n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
+                            Wdilation=Wdilation, Hdilation=Hdilation, Wstride=Wstride, Hstride=Hstride, W=W, H=H)
+                        nqp_set.add((_n,_q,_p))
+                        i += 1
 
-                    # update _p, _q, _n (roll over if necessary)
-                    _p += 1
-                    if _p == P: 
-                        _q += 1
-                        _p = 0
-                    if _q == Q:
-                        _n += 1
-                        _q = 0
-                    if _n == N:
-                        break
+                        # update _p, _q, _n (roll over if necessary)
+                        _p += 1
+                        if _p == P: 
+                            _q += 1
+                            _p = 0
+                        if _q == Q:
+                            _n += 1
+                            _q = 0
+                        if _n == N:
+                            break
 
-                    input_addr.append(new_addr)
-                input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
-                rd_outfile.write(input_rd)
-                
-                cycle += single_pass_latency
-            print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
-            # end for for 1 pass (R*S*C)
+                        input_addr.append(new_addr)
+                    input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
+                    rd_outfile.write(input_rd)
+                    
+                    cycle += single_pass_latency
+                print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+                # end for for 1 pass (R*S*C)
 
-            # ***************write output***************
-            output_addr = []
-            output_layout = arch.storage[arch.mem_idx['OutputBuffer']]['layout']
-            # print(f'Debugging output layout: {output_layout}')
-            for nqp_tuple in nqp_set:
-                _n_tuple = nqp_tuple[0]; _q_tuple = nqp_tuple[1]; _p_tuple = nqp_tuple[2]
-                for _k_tuple in k_set:
-                    if output_layout == 'NKPQ': output_addr.append(output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _p_tuple * Q + _q_tuple)
-                    elif output_layout == 'NKQP': output_addr.append(output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _q_tuple * P + _p_tuple)
-                    elif output_layout == 'NQPK': output_addr.append(output_base + _n_tuple * K*P*Q + _q_tuple * P*K + _p_tuple * K + _k_tuple)
-                    elif output_layout == 'NPQK': output_addr.append(output_base + _n_tuple * K*P*Q + _p_tuple * Q*K + _q_tuple * K + _k_tuple)
-                    else: print(f'Does not support output memory layout of {output_layout}'); exit()
-            output_wr = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(output_addr, hw_i*hw_w)
-            wr_outfile.write(output_wr)
+                # ***************write output***************
+                output_addr = []
+                output_layout = arch.storage[arch.mem_idx['OutputBuffer']]['layout']
+                # print(f'Debugging output layout: {output_layout}')
+                for nqp_tuple in nqp_set:
+                    _n_tuple = nqp_tuple[0]; _q_tuple = nqp_tuple[1]; _p_tuple = nqp_tuple[2]
+                    for _k_tuple in k_set:
+                        if output_layout == 'NKPQ': output_addr.append(output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _p_tuple * Q + _q_tuple)
+                        elif output_layout == 'NKQP': output_addr.append(output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _q_tuple * P + _p_tuple)
+                        elif output_layout == 'NQPK': output_addr.append(output_base + _n_tuple * K*P*Q + _q_tuple * P*K + _p_tuple * K + _k_tuple)
+                        elif output_layout == 'NPQK': output_addr.append(output_base + _n_tuple * K*P*Q + _p_tuple * Q*K + _q_tuple * K + _k_tuple)
+                        else: print(f'Does not support output memory layout of {output_layout}'); exit()
+                output_wr = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(output_addr, hw_i*hw_w)
+                wr_outfile.write(output_wr)
+
+                # update checkpoint values for weight
+                cp_k = _k
+
+            # end for for 1 inner streaming tile; In this case a weight tile
 
             # update checkpoint values for input
             cp_p = _p; cp_n = _n; cp_q = _q
-
-        # end for for 1 inner streaming tile; By default a input tile
-
-        # update checkpoint values for weight
-        cp_k = _k
-        cp_p = 0; cp_n = 0; cp_q = 0
+            cp_k = 0
 
     
 

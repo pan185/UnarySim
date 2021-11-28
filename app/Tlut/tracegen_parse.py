@@ -68,13 +68,14 @@ class Prob(object):
 
     def config_str(self):
         """Returns the key str name for representing a unique layer."""
-        val_arr = []
-        for value in self.prob_bound:
-            val_arr.append(str(value))
-        keys = ['Wstride', 'Hstride', 'Wdilation', 'Hdilation']
-        val_arr.extend([str(self.prob[key]) for key in keys])
-        val_str = "_".join(val_arr)
-        return val_str
+        # val_arr = []
+        # for value in self.prob_bound:
+        #     val_arr.append(str(value))
+        # keys = ['Wstride', 'Hstride', 'Wdilation', 'Hdilation']
+        # val_arr.extend([str(self.prob[key]) for key in keys])
+        # val_str = "_".join(val_arr)
+        # return val_str
+        return self.path.stem
 
     def print(self):
         print(self.__dict__)
