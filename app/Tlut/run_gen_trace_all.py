@@ -19,7 +19,7 @@ def construct_argparser():
                         '--arch_path',
                         type=str,
                         help='Hardware Architecture Path',
-                        default=f'{_TRANCEGEN_DIR}/configs/arch/perfect_mem_128.yml',
+                        default=f'{_TRANCEGEN_DIR}/configs/arch/archs.yml',
                         )
 
     parser.add_argument('-nn',
@@ -39,25 +39,28 @@ def construct_argparser():
     return parser
 
 def run_all(arch_path, nn_path, dtf_path, output_path):
+    arch_names = utils.parse_yaml(arch_path)
     nn_layer_names = utils.parse_yaml(nn_path)
     dtf_names = utils.parse_yaml(dtf_path)
     # print(nn_layer_names, dtf_names)
-    
-    for layer in nn_layer_names:
-        print(utils.bcolors.OKCYAN+ f'Processing {layer}' + utils.bcolors.ENDC)
-        layer += '.yaml'
-        for dtf in dtf_names:
-            print(utils.bcolors.OKBLUE +f'    Using {dtf} dataflow' + utils.bcolors.ENDC)
-            dtf += '.yaml'
-            in_arr = ['python3', f'{_TRANCEGEN_DIR}/trace_gen.py', 
-                '-pp', f'{_TRANCEGEN_DIR}/configs/workloads/convnet_graph/'+layer, 
-                '-ap', arch_path, 
-                '-dp', f'{_TRANCEGEN_DIR}/configs/dataflow/'+dtf, 
-                '-o', output_path]
-            # print(in_arr)
-            p = subprocess.Popen(in_arr)
-            output, error = p.communicate()
-            if output != None: print(output)
+    for arch in arch_names:
+        print(utils.bcolors.OKGREEN + f'Processing {arch}' + utils.bcolors.ENDC)
+        arch += '.yml'
+        for layer in nn_layer_names:
+            print(utils.bcolors.OKCYAN+ f'  Processing {layer}' + utils.bcolors.ENDC)
+            layer += '.yaml'
+            for dtf in dtf_names:
+                print(utils.bcolors.OKBLUE +f'      Using {dtf} dataflow' + utils.bcolors.ENDC)
+                dtf += '.yaml'
+                in_arr = ['python3', f'{_TRANCEGEN_DIR}/trace_gen.py', 
+                    '-pp', f'{_TRANCEGEN_DIR}/configs/workloads/convnet_graph/'+layer, 
+                    '-ap', f'{_TRANCEGEN_DIR}/configs/arch/'+arch,
+                    '-dp', f'{_TRANCEGEN_DIR}/configs/dataflow/'+dtf, 
+                    '-o', output_path]
+                # print(in_arr)
+                p = subprocess.Popen(in_arr)
+                output, error = p.communicate()
+                if output != None: print(output)
 
 
 
@@ -66,8 +69,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     nn_path = pathlib.Path(args.nn_path).resolve()
-    # arch_path = pathlib.Path(args.arch_path).resolve()
-    arch_path = args.arch_path
+    arch_path = pathlib.Path(args.arch_path).resolve()
+    # arch_path = args.arch_path
     dtf_path = pathlib.Path(args.dtf_path).resolve()
     output_path = args.output_dir
 
