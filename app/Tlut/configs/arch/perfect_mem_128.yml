@@ -1,9 +1,9 @@
 arch:
   arithmetic:
-    dimA: 128 
-    dimC: 128
-    bwA: 4
-    bwC: 8
+    dimI: 128 
+    dimW: 128
+    bwI: 4
+    bwW: 8
     instances: 1
   storage:
   - name: OutputBuffer

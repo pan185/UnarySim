@@ -64,24 +64,24 @@ def cg_profile(prob, arch, dtf, output_dir):
         dtf: An object defines the dataflow mapping.
         output_dir: Path to output log.
     """
-    #Note: only OS is supported for now
+    #FIXME: only OS is supported for now
     assert(dtf.type=='OutputStationary')
 
     # tiling_factors: (weight, input) dimension tiling consts
     pqn = prob.prob_bound[prob.prob_name_idx_dict['P']]*prob.prob_bound[prob.prob_name_idx_dict['Q']]*prob.prob_bound[prob.prob_name_idx_dict['N']]
     K = prob.prob_bound[prob.prob_name_idx_dict['K']]
-    tiling_factors = (math.ceil(K/arch.arithmetic['dimC']), 
-        math.ceil(pqn/arch.arithmetic['dimA']))
+    tiling_factors = (math.ceil(K/arch.arithmetic['dimW']), 
+        math.ceil(pqn/arch.arithmetic['dimI']))
     spatially_remapping = tiling_factors[0] * tiling_factors[1]
     temporal_mapping_times = spatially_remapping * prob.prob_bound[prob.prob_name_idx_dict['R']]*prob.prob_bound[prob.prob_name_idx_dict['S']]*prob.prob_bound[prob.prob_name_idx_dict['C']]
 
     # parse early termination 
     et = prob.prob.get('et_cycle', None)
-    if et == None: single_pass_latency = arch.arithmetic['bwA']**2 # if no et cycle specificied, assume no et
+    if et == None: single_pass_latency = arch.arithmetic['bwI']**2 # if no et cycle specificied, assume no et
     else: single_pass_latency = et
     latency = temporal_mapping_times * single_pass_latency
     print("latency = ", latency)
-    total_compute = spatially_remapping * arch.arithmetic['dimA'] * arch.arithmetic['dimC']
+    total_compute = spatially_remapping * arch.arithmetic['dimI'] * arch.arithmetic['dimW']
     utilized_compute = pqn * K
     utilization = utilized_compute / total_compute * 100
 
@@ -105,8 +105,8 @@ def cg_profile(prob, arch, dtf, output_dir):
     wr_outfile = open(sram_write_trace_file, 'w')
 
     # Parse arch and prob dimensions
-    hw_w = arch.arithmetic['dimC']
-    hw_i = arch.arithmetic['dimA']
+    hw_w = arch.arithmetic['dimW']
+    hw_i = arch.arithmetic['dimI']
     R = prob.prob_bound[prob.prob_name_idx_dict['R']]
     S = prob.prob_bound[prob.prob_name_idx_dict['S']]
     C = prob.prob_bound[prob.prob_name_idx_dict['C']]
@@ -136,7 +136,7 @@ def cg_profile(prob, arch, dtf, output_dir):
     i_pass = 0 # index of passes
     iter_per_pass = R*S*C
     print(f'input tiling={tiling_factors[1]}, wght tiling={tiling_factors[0]}, RSC={iter_per_pass}')
-    assert dtf.tileStationary == 'W' # TODO: support flexible streaming order
+    assert dtf.tileStationary == 'W' # FIXME: support flexible streaming order
 
     # 2-layer for loop for IW tiles
     for w_tile in range(tiling_factors[0]):
