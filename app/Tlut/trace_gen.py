@@ -14,7 +14,6 @@ import pathlib
 from tracegen_parse import Dataflow, Prob, Arch
 import math
 import utils
-import numpy as np
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
 
 def construct_argparser():
@@ -46,16 +45,10 @@ def construct_argparser():
                         default=f'{_TRANCEGEN_DIR}/configs/dataflow/os_w_sta.yaml',
                         )
 
-    parser.add_argument('--dataflow',
-                    choices=['os', 'ws', 'is'],
-                    help='Dataflow Config',
-                    default='os'
-                    )
-
     return parser
 
 def cg_profile(prob, arch, dtf, output_dir):
-    """ Coarse grained profiling. 
+    """ Coarse grained profiling and trace gen
         Default assuming naive output stationary dataflow.
 
     Args:
@@ -123,11 +116,11 @@ def cg_profile(prob, arch, dtf, output_dir):
     H = (Q-1)*Hstride + S + 2 * PAD 
     INP = N * P * Q
 
-    # FIXME: fix memory granularity
-    # address base (byte addressable) Note: different from uSystolic
-    output_base=2000000 # output feature map base addr, in byte
-    wght_base=1000000 # weight base addr, in byte
-    input_base=0 # input feature map base addr, in byte
+    # address base
+    # Note: address/trace is produced in block granularity to decouple trace gen and processing
+    output_base=2000000 # output feature map base addr
+    wght_base=1000000 # weight base addr
+    input_base=0 # input feature map base addr
 
     # initialize checkpoint values
     cp_n = 0; cp_p = 0; cp_q = 0; i = 0;
@@ -311,7 +304,6 @@ def run_trace_gen(prob_path, arch_path, dtf_path, output_path):
     dtf.print()
 
     cg_profile(prob, arch, dtf, output_path)
-    # gen(prob, arch, output_path, dataflow)
 
 
 if __name__ == "__main__":
