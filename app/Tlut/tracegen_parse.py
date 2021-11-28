@@ -165,3 +165,26 @@ class Arch(object):
 
     def print(self):
         print(self.__dict__)
+
+class Dataflow(object):
+    """
+    Dataflow object that describes the mapping from compute to hardware
+
+    Attributes:
+        type: OutputStationary/InputStationary/WeightStationary
+        TileStationary: I/W
+    """
+
+    def __init__(self, dtf_path):
+        self.path = dtf_path.resolve()
+        dtf_dict = utils.parse_yaml(self.path)
+
+        self.type = dtf_dict['Type']
+        self.tileStationary = dtf_dict['TileStationary']
+
+    def config_str(self):
+        """Return the filename for the input yaml with postfix."""
+        return self.path.stem
+
+    def print(self):
+        print(self.__dict__)
