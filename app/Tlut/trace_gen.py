@@ -92,8 +92,10 @@ def cg_profile(prob, arch, dtf, output_dir):
 
     #****************gen trace*************
     # output file path
-    sram_read_trace_file = output_dir / 'sram_read.csv'
-    rd_outfile = open(sram_read_trace_file, 'w')
+    sram_read_trace_file_input = output_dir / 'sram_read_input.csv'
+    rd_outfile_input = open(sram_read_trace_file_input, 'w')
+    sram_read_trace_file_weight = output_dir / 'sram_read_weight.csv'
+    rd_outfile_weight = open(sram_read_trace_file_weight, 'w')
     sram_write_trace_file = output_dir / 'sram_write.csv'
     wr_outfile = open(sram_write_trace_file, 'w')
 
@@ -149,7 +151,7 @@ def cg_profile(prob, arch, dtf, output_dir):
                         if _k + cp_k >= K: break # Note: Unoptimized mapping, no packing for underutilized w vector
 
                     wght_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(wght_addr, hw_w)
-                    rd_outfile.write(wght_rd)
+                    rd_outfile_weight.write(wght_rd)
 
                     # ***************load input***************
                     input_addr = []
@@ -181,7 +183,7 @@ def cg_profile(prob, arch, dtf, output_dir):
 
                         input_addr.append(new_addr)
                     input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
-                    rd_outfile.write(input_rd)
+                    rd_outfile_input.write(input_rd)
                     
                     cycle += single_pass_latency
                 print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
@@ -194,11 +196,13 @@ def cg_profile(prob, arch, dtf, output_dir):
                 for nqp_tuple in nqp_set:
                     _n_tuple = nqp_tuple[0]; _q_tuple = nqp_tuple[1]; _p_tuple = nqp_tuple[2]
                     for _k_tuple in k_set:
-                        if output_layout == 'NKPQ': output_addr.append(output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _p_tuple * Q + _q_tuple)
-                        elif output_layout == 'NKQP': output_addr.append(output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _q_tuple * P + _p_tuple)
-                        elif output_layout == 'NQPK': output_addr.append(output_base + _n_tuple * K*P*Q + _q_tuple * P*K + _p_tuple * K + _k_tuple)
-                        elif output_layout == 'NPQK': output_addr.append(output_base + _n_tuple * K*P*Q + _p_tuple * Q*K + _q_tuple * K + _k_tuple)
+                        if output_layout == 'NKPQ': o_addr = output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _p_tuple * Q + _q_tuple
+                        elif output_layout == 'NKQP': o_addr = output_base + _n_tuple * K*P*Q + _k_tuple * P*Q + _q_tuple * P + _p_tuple
+                        elif output_layout == 'NQPK': o_addr = output_base + _n_tuple * K*P*Q + _q_tuple * P*K + _p_tuple * K + _k_tuple
+                        elif output_layout == 'NPQK': o_addr = output_base + _n_tuple * K*P*Q + _p_tuple * Q*K + _q_tuple * K + _k_tuple
                         else: print(f'Does not support output memory layout of {output_layout}'); exit()
+                        output_addr.append(o_addr)
+                # print(output_addr)
                 output_wr = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(output_addr, hw_i*hw_w)
                 wr_outfile.write(output_wr)
 
@@ -208,7 +212,7 @@ def cg_profile(prob, arch, dtf, output_dir):
             # end for for 1 inner streaming tile; By default a input tile
 
             # update checkpoint values for weight
-            cp_k = _k
+            cp_k += _k
             cp_p = 0; cp_n = 0; cp_q = 0
 
     else: # I stationary streaming
@@ -229,7 +233,7 @@ def cg_profile(prob, arch, dtf, output_dir):
                         if _k + cp_k >= K: break # Note: Unoptimized mapping, no packing for underutilized w vector
 
                     wght_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(wght_addr, hw_w)
-                    rd_outfile.write(wght_rd)
+                    rd_outfile_weight.write(wght_rd)
 
                     # ***************load input***************
                     input_addr = []
@@ -261,7 +265,7 @@ def cg_profile(prob, arch, dtf, output_dir):
 
                         input_addr.append(new_addr)
                     input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
-                    rd_outfile.write(input_rd)
+                    rd_outfile_input.write(input_rd)
                     
                     cycle += single_pass_latency
                 print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
@@ -283,7 +287,7 @@ def cg_profile(prob, arch, dtf, output_dir):
                 wr_outfile.write(output_wr)
 
                 # update checkpoint values for weight
-                cp_k = _k
+                cp_k += _k
 
             # end for for 1 inner streaming tile; In this case a weight tile
 
