@@ -70,7 +70,6 @@ if __name__ == "__main__":
 
     nn_path = pathlib.Path(args.nn_path).resolve()
     arch_path = pathlib.Path(args.arch_path).resolve()
-    # arch_path = args.arch_path
     dtf_path = pathlib.Path(args.dtf_path).resolve()
     output_path = args.output_dir
 

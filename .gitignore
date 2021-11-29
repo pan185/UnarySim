@@ -17,3 +17,4 @@ test/test_training.py
 *.vstf
 *.wlf
 *.mti
+*.log

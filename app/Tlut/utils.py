@@ -2,6 +2,16 @@ from math import pi
 import yaml
 import json
 
+# logger
+from time import strftime, gmtime
+import random
+import string
+import logging
+import sys
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.NOTSET)  # capture everything
+logger.disabled = True
+
 class bcolors:
     """
     Reference from: 
@@ -16,6 +26,30 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+def setup_logging(module_name, logger):
+    # logging setup
+    def logfilename():
+        """ Construct a unique log file name from: date + 16 char random. """
+        timeline = strftime("%Y-%m-%d--%H-%M-%S", gmtime())
+        randname = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
+        return module_name + "-" + timeline + "-" + randname + ".log"
+
+    # log to file
+    full_log_filename = logfilename()
+    fileHandler = logging.FileHandler(full_log_filename)
+    # formatting for log to file
+    # TODO: filehandler should be handler 0 (firesim_topology_with_passes expects this
+    # to get the filename) - handle this more appropriately later
+    logFormatter = logging.Formatter("%(asctime)s [%(funcName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+    fileHandler.setFormatter(logFormatter)
+    fileHandler.setLevel(logging.NOTSET)  # log everything to file
+    logger.addHandler(fileHandler)
+
+    # log to stdout, without special formatting
+    consoleHandler = logging.StreamHandler(stream=sys.stdout)
+    consoleHandler.setLevel(logging.DEBUG)  # show only INFO and greater in console
+    logger.addHandler(consoleHandler)
 
 def parse_yaml(yaml_path):
     with open(yaml_path, 'r') as f:
@@ -32,7 +66,7 @@ def list_to_comma_separated_str_with_padding(_list, dim_hw):
     # for item in _list: _str += f'{item},'
     for i in range(dim_hw): 
         if i < len(_list): _str += f'{_list[i]},'
-        else: _str += 'nan,'
+        else: _str += ','
     _str += '\n'
     return _str
 

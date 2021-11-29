@@ -14,7 +14,10 @@ import pathlib
 from tracegen_parse import Dataflow, Prob, Arch
 import math
 import utils
+import logging
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # capture everything
 
 def construct_argparser():
     parser = argparse.ArgumentParser(description='Run Configuration')
@@ -73,10 +76,10 @@ def cg_profile(prob, arch, dtf, output_dir):
     if et == None: single_pass_latency = arch.arithmetic['bwI']**2 # if no et cycle specificied, assume no et
     else: single_pass_latency = et
     latency = temporal_mapping_times * single_pass_latency
-    print("latency = ", latency)
     total_compute = spatially_remapping * arch.arithmetic['dimI'] * arch.arithmetic['dimW']
     utilized_compute = pqn * K
     utilization = utilized_compute / total_compute * 100
+    logger.debug(f"latency = {latency}, util={utilization}")
 
     # parse coarse grained stats to json file
     output_base = pathlib.Path(output_path).resolve()
@@ -131,7 +134,7 @@ def cg_profile(prob, arch, dtf, output_dir):
     cycle = 0
     i_pass = 0 # index of passes
     iter_per_pass = R*S*C
-    print(f'input tiling={tiling_factors[1]}, wght tiling={tiling_factors[0]}, RSC={iter_per_pass}')
+    logger.debug(f'input tiling={tiling_factors[1]}, wght tiling={tiling_factors[0]}, RSC={iter_per_pass}')
 
     if dtf.tileStationary == 'W':
         # 2-layer for loop for IW tiles
@@ -162,13 +165,16 @@ def cg_profile(prob, arch, dtf, output_dir):
                     i = 0
                     while i < hw_i: # Spatially load across hw dimension
                         if i == 0:_p = cp_p; _q = cp_q; _n = cp_n;
-                        if _p * _q * _n > P*Q*N: break
+                        if _p > P: break
+                        if _q > Q: break
+                        if _n > N: break
                         new_addr = input_base + utils.im2col_addr(
                             input_layout=input_layout,
                             patch_P=_p, patch_Q=_q, patch_N=_n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
                             Wdilation=Wdilation, Hdilation=Hdilation, Wstride=Wstride, Hstride=Hstride, W=W, H=H)
                         nqp_set.add((_n,_q,_p))
                         i += 1
+                        input_addr.append(new_addr)
 
                         # update _p, _q, _n (roll over if necessary)
                         _p += 1
@@ -178,15 +184,16 @@ def cg_profile(prob, arch, dtf, output_dir):
                         if _q == Q:
                             _n += 1
                             _q = 0
-                        if _n == N:
+                        if _n == N: 
                             break
 
-                        input_addr.append(new_addr)
+                    # print(utils.bcolors.OKCYAN + f'{input_addr}' + utils.bcolors.ENDC)
                     input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
                     rd_outfile_input.write(input_rd)
                     
                     cycle += single_pass_latency
-                print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+                # print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+                logger.debug(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
                 # end for for 1 pass (R*S*C)
 
                 # ***************write output***************
@@ -244,13 +251,16 @@ def cg_profile(prob, arch, dtf, output_dir):
                     i = 0
                     while i < hw_i: # Spatially load across hw dimension
                         if i == 0:_p = cp_p; _q = cp_q; _n = cp_n;
-                        if _p * _q * _n > P*Q*N: break
+                        if _p > P: break
+                        if _q > Q: break
+                        if _n > N: break
                         new_addr = input_base + utils.im2col_addr(
                             input_layout=input_layout,
                             patch_P=_p, patch_Q=_q, patch_N=_n, pixel=i_pass, pad=PAD, R=R, S=S, C=C, N=N,
                             Wdilation=Wdilation, Hdilation=Hdilation, Wstride=Wstride, Hstride=Hstride, W=W, H=H)
                         nqp_set.add((_n,_q,_p))
                         i += 1
+                        input_addr.append(new_addr)
 
                         # update _p, _q, _n (roll over if necessary)
                         _p += 1
@@ -263,12 +273,13 @@ def cg_profile(prob, arch, dtf, output_dir):
                         if _n == N:
                             break
 
-                        input_addr.append(new_addr)
+                    # print(utils.bcolors.OKCYAN + f'{input_addr}' + utils.bcolors.ENDC)
                     input_rd = f'{cycle},' + utils.list_to_comma_separated_str_with_padding(input_addr, hw_i)
                     rd_outfile_input.write(input_rd)
                     
                     cycle += single_pass_latency
-                print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+                # print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+                logger.debug(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
                 # end for for 1 pass (R*S*C)
 
                 # ***************write output***************
@@ -313,6 +324,10 @@ def run_trace_gen(prob_path, arch_path, dtf_path, output_path):
 if __name__ == "__main__":
     parser = construct_argparser()
     args = parser.parse_args()
+
+    # Setup logger
+    module_name = pathlib.Path(__file__).stem
+    utils.setup_logging(module_name, logger)
 
     prob_path = pathlib.Path(args.prob_path).resolve()
     arch_path = pathlib.Path(args.arch_path).resolve()
