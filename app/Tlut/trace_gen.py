@@ -15,8 +15,8 @@ from tracegen_parse import Dataflow, Prob, Arch
 import math
 import utils
 import logging
-import simHw.block_trace as bt
-import simHw.contention_processing as cp
+import block_trace as bt
+import contention_processing as cp
 
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
 logger = logging.getLogger(__name__)

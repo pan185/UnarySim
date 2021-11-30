@@ -1,8 +1,9 @@
 import math
-import block_trace as bt
+import block_trace
 import utils
 import argparse
 import os
+import utils
 import pathlib
 import logging
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
@@ -40,6 +41,7 @@ def construct_argparser():
     return parser
 
 def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
+    print(utils.bcolors.OKBLUE + f'Contention processing on {arch.config_str()}/{prob.config_str()}/{dtf.config_str()}' + utils.bcolors.ENDC)
     # *******************Contention processing*******************
     # Code adapted from uSystolic-sim profiling.py
 
@@ -56,7 +58,7 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     act_cycles_ifmap_rd_sram, \
     stall_cycles_ifmap_rd_sram, \
     ideal_start_cycle_ifmap_rd_sram, \
-    ideal_end_cycle_ifmap_rd_sram = bt.sram_profiling(
+    ideal_end_cycle_ifmap_rd_sram = block_trace.sram_profiling(
         trace_file=out_dir / 'sram_read_input.csv', 
         word_sz_bytes=word_sz_bytes_input_rd,
         block_sz_bytes=16,
@@ -76,7 +78,7 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     act_cycles_filter_rd_sram, \
     stall_cycles_filter_rd_sram, \
     ideal_start_cycle_filter_rd_sram, \
-    ideal_end_cycle_filter_rd_sram = bt.sram_profiling(
+    ideal_end_cycle_filter_rd_sram = block_trace.sram_profiling(
         trace_file=out_dir / 'sram_read_weight.csv', 
         word_sz_bytes=word_sz_bytes_weight_rd,
         block_sz_bytes=16,
@@ -99,13 +101,13 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     act_cycles_ofmap_wr_sram, \
     stall_cycles_ofmap_wr_sram, \
     ideal_start_cycle_ofmap_wr_sram, \
-    ideal_end_cycle_ofmap_wr_sram = bt.sram_profiling(
+    ideal_end_cycle_ofmap_wr_sram = block_trace.sram_profiling(
         trace_file=out_dir / 'sram_write.csv', 
         word_sz_bytes=word_sz_bytes_output_wr,
         block_sz_bytes=16,
         bank=8,
         min_addr_word=arch.storage[arch.mem_idx['OutputBuffer']]['base'],
-        max_addr_word=arch.storage[arch.mem_idx['OuputBuffer']]['base'] + arch.storage[arch.mem_idx['OutputBuffer']]['entries'],
+        max_addr_word=arch.storage[arch.mem_idx['OutputBuffer']]['base'] + arch.storage[arch.mem_idx['OutputBuffer']]['entries'],
         access_buf=True)
     real_start_cycle_ofmap_wr_sram = ideal_start_cycle_ofmap_wr_sram
     real_end_cycle_ofmap_wr_sram = ideal_end_cycle_ofmap_wr_sram + stall_cycles_ofmap_wr_sram
@@ -131,6 +133,7 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     # real
     real_max_clk =  ideal_max_clk + \
                         stall_cycles_filter_rd_sram + stall_cycles_ifmap_rd_sram + stall_cycles_ofmap_wr_sram
+    print(f'Stall cycle: input={stall_cycles_ifmap_rd_sram}, weight={stall_cycles_filter_rd_sram}, output={stall_cycles_ofmap_wr_sram}')
     real_min_clk =  ideal_min_clk
     real_layer_cycle = real_max_clk - real_min_clk + 1
     real_layer_sec = real_layer_cycle * period / float(10**6)
@@ -163,7 +166,7 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     # tot_word_ofmap_wr_sram_all  += tot_word_ofmap_wr_sram
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-    # run time cycle
+    # active cycle for dynamic power calculation
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     # cycles for pe to be active: during ifmap streaming and ofmap streaming
     act_cycle_ifmap_rd = act_cycles_ifmap_rd_sram
@@ -179,10 +182,50 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     prefix = 'stats'
     json_file = out_dir / f"{prefix}.json"
     status_dict = dict()
-    status_dict['pe_cycle'] = cg_lat
-    status_dict['utilization'] = cg_util
-    status_dict['ideal_layer_cycle'] = ideal_layer_cycle
-    status_dict['real_layer_cycle'] = real_layer_cycle
+
+    cg_dict = dict()
+    cg_dict['pe_cycle'] = cg_lat
+    cg_dict['utilization'] = cg_util
+    status_dict['cg'] = cg_dict
+
+    ideal_dict = dict()
+    ideal_rt_dict = dict()
+    ideal_rt_dict['layer_cycle'] = ideal_layer_cycle
+    ideal_rt_dict['layer_sec'] = ideal_layer_sec
+    ideal_rt_dict['layer_throughput'] = ideal_layer_throughput
+    ideal_dict['runtime'] = ideal_rt_dict
+    ideal_bw_dict = dict()
+    ideal_bw_dict['input_rd'] = sram_bw_ideal_ifmap_rd
+    ideal_bw_dict['weight_rd'] = sram_bw_ideal_filter_rd
+    ideal_bw_dict['output_wr'] = sram_bw_ideal_ofmap_wr
+    ideal_bw_dict['total'] = sram_bw_ideal_total
+    ideal_dict['bandwidth'] = ideal_bw_dict
+    ideal_dynamic_cycle_dict = dict()
+    ideal_dynamic_cycle_dict['ireg'] = dynamic_cycle_ireg
+    ideal_dynamic_cycle_dict['wreg'] = dynamic_cycle_wreg
+    ideal_dynamic_cycle_dict['mac'] = dynamic_cycle_mac
+    ideal_dict['dynamic_cycle'] = ideal_dynamic_cycle_dict
+    status_dict['ideal'] = ideal_dict
+
+    real_dict = dict()
+    real_rt_dict = dict()
+    real_rt_dict['layer_cycle'] = real_layer_cycle
+    real_rt_dict['layer_sec'] = real_layer_sec
+    real_rt_dict['layer_throughput'] = real_layer_throughput
+    real_dict['runtime'] = real_rt_dict
+    real_bw_dict = dict()
+    real_bw_dict['input_rd'] = sram_bw_real_ifmap_rd
+    real_bw_dict['weight_rd'] = sram_bw_real_filter_rd
+    real_bw_dict['output_wr'] = sram_bw_real_ofmap_wr
+    real_bw_dict['total'] = sram_bw_real_total
+    real_dict['bandwidth'] = real_bw_dict
+    real_dynamic_cycle_dict = dict()
+    real_dynamic_cycle_dict['ireg'] = dynamic_cycle_ireg
+    real_dynamic_cycle_dict['wreg'] = dynamic_cycle_wreg
+    real_dynamic_cycle_dict['mac'] = dynamic_cycle_mac
+    real_dict['dynamic_cycle'] = real_dynamic_cycle_dict
+    status_dict['real'] = real_dict
+
 
     utils.store_json(json_file, status_dict, indent=4)
 
