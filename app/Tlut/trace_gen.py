@@ -15,6 +15,9 @@ from tracegen_parse import Dataflow, Prob, Arch
 import math
 import utils
 import logging
+import simHw.block_trace as bt
+import simHw.contention_processing as cp
+
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # capture everything
@@ -59,6 +62,11 @@ def cg_profile(prob, arch, dtf, output_dir):
         arch: An object defines the hardware architecture dimension.
         dtf: An object defines the dataflow mapping.
         output_dir: Path to output log.
+    
+    Return:
+        output_dir: output path to trace files
+        latency: coarse grained latency
+        utilization: hardware utilization under the defined dataflow
     """
     #FIXME: only OS is supported for now
     assert(dtf.type=='OutputStationary')
@@ -86,12 +94,12 @@ def cg_profile(prob, arch, dtf, output_dir):
     output_dir = output_base / arch.config_str() / prob.config_str() / dtf.config_str()
     # print(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    prefix = 'stats'
-    json_file = output_dir / f"{prefix}.json"
-    status_dict = dict()
-    status_dict['pe_cycle'] = latency
-    status_dict['utilization'] = utilization
-    utils.store_json(json_file, status_dict, indent=4)
+    # prefix = 'ideal_stats'
+    # json_file = output_dir / f"{prefix}.json"
+    # status_dict = dict()
+    # status_dict['pe_cycle'] = latency
+    # status_dict['utilization'] = utilization
+    # utils.store_json(json_file, status_dict, indent=4)
 
     #****************gen trace*************
     # output file path
@@ -123,9 +131,13 @@ def cg_profile(prob, arch, dtf, output_dir):
 
     # address base
     # Note: address/trace is produced in block granularity to decouple trace gen and processing
-    output_base=2000000 # output feature map base addr
-    wght_base=1000000 # weight base addr
-    input_base=0 # input feature map base addr
+    # TODO: change to take from arch.yaml
+    # output_base=2000000 # output feature map base addr
+    # wght_base=1000000 # weight base addr
+    # input_base=0 # input feature map base addr
+    output_base = arch.storage[arch.mem_idx['OutputBuffer']]['base']
+    wght_base = arch.storage[arch.mem_idx['WeightBuffer']]['base']
+    input_base = arch.storage[arch.mem_idx['InputBuffer']]['base']
 
     # initialize checkpoint values
     cp_n = 0; cp_p = 0; cp_q = 0; i = 0;
@@ -306,6 +318,8 @@ def cg_profile(prob, arch, dtf, output_dir):
             cp_p = _p; cp_n = _n; cp_q = _q
             cp_k = 0
 
+    return output_dir, latency, utilization
+
     
 
 def run_trace_gen(prob_path, arch_path, dtf_path, output_path):
@@ -318,7 +332,11 @@ def run_trace_gen(prob_path, arch_path, dtf_path, output_path):
     arch.print()
     dtf.print()
 
-    cg_profile(prob, arch, dtf, output_path)
+    out_dir, cg_lat, cg_util = cg_profile(prob, arch, dtf, output_path)
+    cp.profile(prob, arch, dtf, output_path, out_dir, cg_lat, cg_util)
+    # return out_dir, cg_lat, cg_util
+    
+    
 
 
 if __name__ == "__main__":
@@ -334,4 +352,6 @@ if __name__ == "__main__":
     dtf_path = pathlib.Path(args.dtf_path).resolve()
     output_path = args.output_dir
 
+    # out_dir, cg_lat, cg_uitl = 
     run_trace_gen(prob_path=prob_path, arch_path=arch_path, dtf_path=dtf_path, output_path=output_path)
+

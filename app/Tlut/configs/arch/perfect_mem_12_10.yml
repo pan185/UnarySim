@@ -8,17 +8,20 @@ arch:
   storage:
   - name: OutputBuffer
     bw: 32
-    entries: 16384
+    base: 2000000
+    entries: 1000000
     instances: 1
     layout: NKPQ
   - name: WeightBuffer
     bw: 8
-    entries: 128
+    base: 1000000
+    entries: 1000000
     instances: 1
     layout: KRSC
   - name: InputBuffer
     bw: 4
-    entries: 128
+    base: 0
+    entries: 1000000
     instances: 1
     layout: NCHW
 
