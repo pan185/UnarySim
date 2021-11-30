@@ -91,7 +91,7 @@ def cg_profile(prob, arch, dtf, output_dir):
 
     # parse coarse grained stats to json file
     output_base = pathlib.Path(output_path).resolve()
-    output_dir = output_base / arch.config_str() / prob.config_str() / dtf.config_str()
+    output_dir = output_base / arch.config_str() / dtf.config_str() / prob.config_str()
     # print(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     # prefix = 'ideal_stats'

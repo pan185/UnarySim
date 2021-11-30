@@ -60,6 +60,11 @@ def store_json(json_path, data, indent=None):
     with open(json_path, "w") as f:
         json.dump(data, f, indent=indent)
 
+def parse_json(json_path):
+    with open(json_path) as f:
+        data = json.load(f)
+    return data
+
 def list_to_comma_separated_str_with_padding(_list, dim_hw):
     assert(len(_list) <= dim_hw)
     _str = ''
