@@ -183,49 +183,13 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     json_file = out_dir / f"{prefix}.json"
     status_dict = dict()
 
-    cg_dict = dict()
-    cg_dict['pe_cycle'] = cg_lat
-    cg_dict['utilization'] = cg_util
-    status_dict['cg'] = cg_dict
-
-    ideal_dict = dict()
-    ideal_rt_dict = dict()
-    ideal_rt_dict['layer_cycle'] = ideal_layer_cycle
-    ideal_rt_dict['layer_sec'] = ideal_layer_sec
-    ideal_rt_dict['layer_throughput'] = ideal_layer_throughput
-    ideal_dict['runtime'] = ideal_rt_dict
-    ideal_bw_dict = dict()
-    ideal_bw_dict['input_rd'] = sram_bw_ideal_ifmap_rd
-    ideal_bw_dict['weight_rd'] = sram_bw_ideal_filter_rd
-    ideal_bw_dict['output_wr'] = sram_bw_ideal_ofmap_wr
-    ideal_bw_dict['total'] = sram_bw_ideal_total
-    ideal_dict['bandwidth'] = ideal_bw_dict
-    ideal_dynamic_cycle_dict = dict()
-    ideal_dynamic_cycle_dict['ireg'] = dynamic_cycle_ireg
-    ideal_dynamic_cycle_dict['wreg'] = dynamic_cycle_wreg
-    ideal_dynamic_cycle_dict['mac'] = dynamic_cycle_mac
-    ideal_dict['dynamic_cycle'] = ideal_dynamic_cycle_dict
-    status_dict['ideal'] = ideal_dict
-
-    real_dict = dict()
-    real_rt_dict = dict()
-    real_rt_dict['layer_cycle'] = real_layer_cycle
-    real_rt_dict['layer_sec'] = real_layer_sec
-    real_rt_dict['layer_throughput'] = real_layer_throughput
-    real_dict['runtime'] = real_rt_dict
-    real_bw_dict = dict()
-    real_bw_dict['input_rd'] = sram_bw_real_ifmap_rd
-    real_bw_dict['weight_rd'] = sram_bw_real_filter_rd
-    real_bw_dict['output_wr'] = sram_bw_real_ofmap_wr
-    real_bw_dict['total'] = sram_bw_real_total
-    real_dict['bandwidth'] = real_bw_dict
-    real_dynamic_cycle_dict = dict()
-    real_dynamic_cycle_dict['ireg'] = dynamic_cycle_ireg
-    real_dynamic_cycle_dict['wreg'] = dynamic_cycle_wreg
-    real_dynamic_cycle_dict['mac'] = dynamic_cycle_mac
-    real_dict['dynamic_cycle'] = real_dynamic_cycle_dict
-    status_dict['real'] = real_dict
-
+    status_dict = utils.construct_dict(status_dict, 
+        cg_lat, cg_util, 
+        ideal_layer_cycle, ideal_layer_sec, ideal_layer_throughput, 
+        sram_bw_ideal_ifmap_rd, sram_bw_ideal_filter_rd, sram_bw_ideal_ofmap_wr, sram_bw_ideal_total,
+        real_layer_cycle, real_layer_sec, real_layer_throughput, 
+        sram_bw_real_ifmap_rd, sram_bw_real_filter_rd, sram_bw_real_ofmap_wr, sram_bw_real_total,
+        dynamic_cycle_ireg, dynamic_cycle_wreg, dynamic_cycle_mac)
 
     utils.store_json(json_file, status_dict, indent=4)
 

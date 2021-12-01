@@ -53,7 +53,7 @@ def construct_argparser():
 
     return parser
 
-def cg_profile(prob, arch, dtf, output_dir):
+def cg_profile(prob, arch, dtf, output_dir, nn_name):
     """ Coarse grained profiling and trace gen
         Default assuming naive output stationary dataflow.
 
@@ -91,7 +91,7 @@ def cg_profile(prob, arch, dtf, output_dir):
 
     # parse coarse grained stats to json file
     output_base = pathlib.Path(output_path).resolve()
-    output_dir = output_base / arch.config_str() / dtf.config_str() / prob.config_str()
+    output_dir = output_base / arch.config_str() / dtf.config_str() / nn_name / prob.config_str()
     # print(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     # prefix = 'ideal_stats'
@@ -131,10 +131,6 @@ def cg_profile(prob, arch, dtf, output_dir):
 
     # address base
     # Note: address/trace is produced in block granularity to decouple trace gen and processing
-    # TODO: change to take from arch.yaml
-    # output_base=2000000 # output feature map base addr
-    # wght_base=1000000 # weight base addr
-    # input_base=0 # input feature map base addr
     output_base = arch.storage[arch.mem_idx['OutputBuffer']]['base']
     wght_base = arch.storage[arch.mem_idx['WeightBuffer']]['base']
     input_base = arch.storage[arch.mem_idx['InputBuffer']]['base']
@@ -322,7 +318,7 @@ def cg_profile(prob, arch, dtf, output_dir):
 
     
 
-def run_trace_gen(prob_path, arch_path, dtf_path, output_path):
+def run_trace_gen(prob_path, arch_path, dtf_path, output_path, nn_name):
     prob = Prob(prob_path)
     arch = Arch(arch_path)
     dtf = Dataflow(dtf_path)
@@ -332,7 +328,7 @@ def run_trace_gen(prob_path, arch_path, dtf_path, output_path):
     arch.print()
     dtf.print()
 
-    out_dir, cg_lat, cg_util = cg_profile(prob, arch, dtf, output_path)
+    out_dir, cg_lat, cg_util = cg_profile(prob, arch, dtf, output_path, nn_name)
     cp.profile(prob, arch, dtf, output_path, out_dir, cg_lat, cg_util)
     # return out_dir, cg_lat, cg_util
     
@@ -352,6 +348,8 @@ if __name__ == "__main__":
     dtf_path = pathlib.Path(args.dtf_path).resolve()
     output_path = args.output_dir
 
+    nn_name = args.prob_path.split('workloads/')[1].split('_graph')[0]
+
     # out_dir, cg_lat, cg_uitl = 
-    run_trace_gen(prob_path=prob_path, arch_path=arch_path, dtf_path=dtf_path, output_path=output_path)
+    run_trace_gen(prob_path=prob_path, arch_path=arch_path, dtf_path=dtf_path, output_path=output_path, nn_name=nn_name)
 
