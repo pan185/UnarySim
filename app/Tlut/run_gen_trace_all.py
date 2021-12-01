@@ -70,7 +70,6 @@ def gen_all(arch_names, nn_layer_names, dtf_names, output_path, network_name):
                 output, error = p.communicate()
                 if output != None: print(output)
 
-
 def parse_names_vec(arch_path, nn_path, dtf_path):
     arch_names = utils.parse_yaml(arch_path)
     nn_layer_names = utils.parse_yaml(nn_path)
@@ -220,11 +219,95 @@ def compare_dtf(arch_name, nn_name, dtf_names, nn_layer_names, out_dir):
     fig.tight_layout()
     plt.savefig(arch_output_path + f'/{nn_name}_dtf_comparison.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
-def compare_arch(): 
+def compare_arch(arch_names, nn_name, dtf_name, out_dir): 
     """
-    This function compares 2 arch sta
+    This function compares archs stats
     """
-    pass
+    # runtime: stacked bar
+    ideal_arr = []
+    stall_arr = []
+
+    # bw: stacked bar
+    i_bw = []
+    w_bw = []
+    o_bw = []
+
+    for arch_name in arch_names:
+        ideal, stall, i, w, o = utils.get_network_stats(arch_name, nn_name, dtf_name, out_dir)
+        ideal_arr.append(ideal)
+        stall_arr.append(stall)
+        i_bw.append(i)
+        w_bw.append(w)
+        o_bw.append(o)
+
+    # TODO: Make pretty
+    font = {'family':'Times New Roman', 'size': 5}
+    matplotlib.rc('font', **font)
+    my_dpi = 300
+    fig_h = 1
+    fig_w = 3.3115
+
+    # colors
+    grey1 = "#AAAAAA"
+    grey2 = "#D3D3D3"
+    grey3 = "#808080"
+    # patterns
+    patterns = [ "/" ,  "."]
+
+    x_axis = arch_names
+    x_idx = np.arange(len(x_axis))
+
+    width = 0.2
+
+    # runtime plot
+    fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
+    rt_ax.bar(x_idx - 0.5 * width, ideal_arr, width, alpha=0.99, color=grey1, hatch=None, label='ideal')
+    rt_ax.bar(x_idx - 0.5 * width, stall_arr, width, bottom=ideal_arr, alpha=0.99, color=grey2, hatch=None, label='stall')
+    rt_ax.set_ylabel('Latency in cycle')
+    rt_ax.minorticks_off()
+
+    bars, labels = rt_ax.get_legend_handles_labels()
+    
+    plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
+    rt_ax.set_xticks(x_idx)
+    rt_ax.set_xticklabels(x_axis)
+    plt.yscale("linear")
+    rt_ax.legend(bars, labels, loc="lower right", ncol=1, frameon=True)
+    
+    print("rt_ax ylim: ", rt_ax.get_ylim())
+
+    rt_ax.set_ylim((0, 5000000))
+    rt_ax.set_yticks((0, 1000000, 2000000, 3000000, 4000000, 5000000))
+    
+
+    fig.tight_layout()
+    plt.savefig(output_path + f'/{nn_name}_{dtf_name}_arch_comparison_rt.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+
+    # bw plot
+    fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
+    bw_ax.bar(x_idx - 0.5 * width, i_bw, width, alpha=0.99, color=grey1, hatch=None, label='ireg')
+    bw_ax.bar(x_idx - 0.5 * width, w_bw, width, bottom=i_bw, alpha=0.99, color=grey2, hatch=None, label='wreg')
+    bw_ax.bar(x_idx - 0.5 * width, o_bw, width, bottom=w_bw, alpha=0.99, color=grey3, hatch=None, label='oreg')
+
+    bw_ax.set_ylabel('Bandwidth')
+    bw_ax.minorticks_off()
+
+    bars, labels = bw_ax.get_legend_handles_labels()
+    
+    plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
+    bw_ax.set_xticks(x_idx)
+    bw_ax.set_xticklabels(x_axis)
+    plt.yscale("linear")
+    bw_ax.legend(bars, labels, loc="lower right", ncol=1, frameon=True)
+    
+    print("bw_ax ylim: ", bw_ax.get_ylim())
+
+    bw_ax.set_ylim((0, 600000))
+    bw_ax.set_yticks((0, 200000, 400000, 600000))
+    
+
+    fig.tight_layout()
+    plt.savefig(output_path + f'/{nn_name}_{dtf_name}_arch_comparison_bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 if __name__ == "__main__":
     parser = construct_argparser()
@@ -251,5 +334,8 @@ if __name__ == "__main__":
     for arch_name in arch_names:
         print(utils.bcolors.WARNING + f'{arch_name}' + utils.bcolors.ENDC)
         compare_dtf(arch_name, network_name, dtf_names, nn_layer_names, output_path)
+    
+    print(utils.bcolors.OKGREEN + f'********** Comparing archs ***********'+ utils.bcolors.ENDC)
+    compare_arch(arch_names, network_name, dtf_name, output_path)
 
 

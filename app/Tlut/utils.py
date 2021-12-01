@@ -159,4 +159,16 @@ def get_layer_runtime(arch_name, nn_name, layer, dtf_name, base_out_dir):
     real_rt_cyc = data['real']['runtime']['layer_cycle']
     return ideal_rt_cyc, real_rt_cyc-ideal_rt_cyc
 
+def get_network_stats(arch_name, nn_name, dtf_name, base_out_dir): 
+    """
+    Returns ideal runtime cycle and stall cycles for nn
+    """
+    data = parse_json(base_out_dir + '/' + arch_name + '/' + dtf_name + f'/{nn_name}.json')
+    ideal_rt_cyc = data['ideal']['runtime']['layer_cycle']
+    real_rt_cyc = data['real']['runtime']['layer_cycle']
+    real_input_rd = data['real']['bandwidth']['input_rd']
+    real_weight_rd = data['real']['bandwidth']['weight_rd']
+    real_output_wr = data['real']['bandwidth']['output_wr']
+    return ideal_rt_cyc, real_rt_cyc-ideal_rt_cyc, real_input_rd, real_weight_rd, real_output_wr
+
 
