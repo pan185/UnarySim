@@ -140,11 +140,6 @@ def construct_dict(status_dict,
     real_bw_dict['output_wr'] = sram_bw_real_ofmap_wr
     real_bw_dict['total'] = sram_bw_real_total
     real_dict['bandwidth'] = real_bw_dict
-    real_dynamic_cycle_dict = dict()
-    real_dynamic_cycle_dict['ireg'] = dynamic_cycle_ireg
-    real_dynamic_cycle_dict['wreg'] = dynamic_cycle_wreg
-    real_dynamic_cycle_dict['mac'] = dynamic_cycle_mac
-    real_dict['dynamic_cycle'] = real_dynamic_cycle_dict
     status_dict['real'] = real_dict
 
     dynamic_cycle_dict = dict()
@@ -154,4 +149,14 @@ def construct_dict(status_dict,
     status_dict['dynamic_cycle'] = dynamic_cycle_dict
 
     return status_dict
+
+def get_layer_runtime(arch_name, nn_name, layer, dtf_name, base_out_dir): 
+    """
+    Returns ideal runtime cycle and stall cycles
+    """
+    data = parse_json(base_out_dir + '/' + arch_name + '/' + dtf_name + '/' + nn_name + '/' + layer + '/stats.json')
+    ideal_rt_cyc = data['ideal']['runtime']['layer_cycle']
+    real_rt_cyc = data['real']['runtime']['layer_cycle']
+    return ideal_rt_cyc, real_rt_cyc-ideal_rt_cyc
+
 

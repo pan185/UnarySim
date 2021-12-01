@@ -4,6 +4,11 @@ import os
 import pathlib
 import utils
 import subprocess
+import numpy as np
+import os.path
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.font_manager
 
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
 
@@ -135,13 +140,85 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name)
         dyn_ireg, dyn_wreg, dyn_mac)
     utils.store_json(json_file, status_dict, indent=4)
 
+def compare_dtf(arch_name, nn_name, dtf_names, nn_layer_names, out_dir): 
+    """
+    This function reads two dataflow stats files across an arch across L layers and also total network
+    Metric: [real][layer_cycle]
+    """
+    assert len(dtf_names) == 2
+    arch_output_path = out_dir + '/' + arch_name
+
+    ideal0 = []
+    ideal1 = []
+    stall0 = []
+    stall1 = []
+
+    for layer in nn_layer_names:
+        ideal, stall = utils.get_layer_runtime(arch_name, nn_name, layer, dtf_names[0], out_dir)
+        ideal0.append(ideal)
+        stall0.append(stall)
+
+    for layer in nn_layer_names:
+        ideal, stall = utils.get_layer_runtime(arch_name, nn_name, layer, dtf_names[1], out_dir)
+        ideal1.append(ideal)
+        stall1.append(stall)
+
+    # TODO: Make pretty
+    font = {'family':'Times New Roman', 'size': 6}
+    matplotlib.rc('font', **font)
+    my_dpi = 300
+    fig_h = 1
+    fig_w = 3.3115
+
+    # colors
+    grey1 = "#AAAAAA"
+    grey2 = "#D3D3D3"
+    # patterns
+    patterns = [ "/" ,  "."]
+
+    x_axis = nn_layer_names
+    x_idx = np.arange(len(x_axis))
+
+    width = 0.3
+
+    fig, power_ax = plt.subplots(figsize=(fig_w, fig_h))
+    power_ax.bar(x_idx - 0.5 * width, ideal0, width, alpha=0.99, color=grey1, hatch=patterns[0], label='ideal '+dtf_names[0])
+    power_ax.bar(x_idx - 0.5 * width, stall0, width, bottom=ideal0, alpha=0.99, color=grey2, hatch=patterns[0], label='stall '+dtf_names[0])
+    power_ax.set_ylabel('Latency per layer in cycle')
+    power_ax.minorticks_off()
+
+    power2_ax = power_ax.twinx()
+    power2_ax.bar(x_idx + 0.5 * width, ideal1, width, alpha=0.99, color=grey1, hatch=patterns[1], label='ideal '+dtf_names[1])
+    power2_ax.bar(x_idx + 0.5 * width, stall1, width, bottom=ideal1, alpha=0.99, color=grey2, hatch=patterns[1], label='stall '+dtf_names[1])
+    power2_ax.yaxis.set_visible(False)
+    # power2_ax.set_yticklabels('')
+
+    bars, labels = power_ax.get_legend_handles_labels()
+    bars2, labels2 = power2_ax.get_legend_handles_labels()
     
 
-def compare_dtf(): 
-    """
-    This function reads two dataflow stats files across A different archs across L layers and also total network
-    """
-    pass
+    plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
+    power_ax.set_xticks(x_idx)
+    power_ax.set_xticklabels(x_axis)
+    plt.yscale("linear")
+    power_ax.legend(bars + bars2, labels + labels2, loc="lower right", ncol=1, frameon=True)
+    
+    # print("ax ylim: ", power_ax.get_ylim())
+
+    if '12_10' in arch_name:
+        power_ax.set_ylim((0, 3000000))
+        power2_ax.set_ylim((0, 3000000))
+        power_ax.set_yticks((0, 1000000, 2000000, 3000000))
+        power_ax.set_yticklabels(("{:2d}".format(0), "{:2d}".format(1000000), "{:2d}".format(2000000), "{:2d}".format(3000000)))
+    else:
+        power_ax.set_ylim((0, 1500000))
+        power2_ax.set_ylim((0, 1500000))
+        power_ax.set_yticks((0, 500000, 1000000, 1500000))
+        power_ax.set_yticklabels(("{:2d}".format(0), "{:2d}".format(500000), "{:2d}".format(1000000), "{:2d}".format(1500000)))
+
+
+    fig.tight_layout()
+    plt.savefig(arch_output_path + f'/{nn_name}_dtf_comparison.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 def compare_arch(): 
     """
@@ -169,5 +246,10 @@ if __name__ == "__main__":
         for dtf_name in dtf_names:
             print(utils.bcolors.HEADER + f'{arch_name}/{dtf_name}' + utils.bcolors.ENDC)
             gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, network_name)
+
+    print(utils.bcolors.WARNING + f'********** Comparing dtfs ***********'+ utils.bcolors.ENDC)
+    for arch_name in arch_names:
+        print(utils.bcolors.WARNING + f'{arch_name}' + utils.bcolors.ENDC)
+        compare_dtf(arch_name, network_name, dtf_names, nn_layer_names, output_path)
 
 
