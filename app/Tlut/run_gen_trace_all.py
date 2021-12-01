@@ -261,8 +261,8 @@ def compare_arch(arch_names, nn_name, dtf_name, out_dir):
 
     # runtime plot
     fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
-    rt_ax.bar(x_idx - 0.5 * width, ideal_arr, width, alpha=0.99, color=grey1, hatch=None, label='ideal')
-    rt_ax.bar(x_idx - 0.5 * width, stall_arr, width, bottom=ideal_arr, alpha=0.99, color=grey2, hatch=None, label='stall')
+    rt_ax.bar(x_idx, ideal_arr, width, alpha=0.99, color=grey1, hatch=None, label='ideal')
+    rt_ax.bar(x_idx, stall_arr, width, bottom=ideal_arr, alpha=0.99, color=grey2, hatch=None, label='stall')
     rt_ax.set_ylabel('Latency in cycle')
     rt_ax.minorticks_off()
 
@@ -285,11 +285,11 @@ def compare_arch(arch_names, nn_name, dtf_name, out_dir):
 
     # bw plot
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
-    bw_ax.bar(x_idx - 0.5 * width, i_bw, width, alpha=0.99, color=grey1, hatch=None, label='ireg')
-    bw_ax.bar(x_idx - 0.5 * width, w_bw, width, bottom=i_bw, alpha=0.99, color=grey2, hatch=None, label='wreg')
-    bw_ax.bar(x_idx - 0.5 * width, o_bw, width, bottom=w_bw, alpha=0.99, color=grey3, hatch=None, label='oreg')
+    bw_ax.bar(x_idx, i_bw, width, alpha=0.99, color=grey1, hatch=None, label='ireg')
+    bw_ax.bar(x_idx, w_bw, width, bottom=i_bw, alpha=0.99, color=grey2, hatch=None, label='wreg')
+    bw_ax.bar(x_idx, o_bw, width, bottom=w_bw, alpha=0.99, color=grey3, hatch=None, label='oreg')
 
-    bw_ax.set_ylabel('Bandwidth')
+    bw_ax.set_ylabel('Bandwidth (GB/s)')
     bw_ax.minorticks_off()
 
     bars, labels = bw_ax.get_legend_handles_labels()
@@ -302,8 +302,8 @@ def compare_arch(arch_names, nn_name, dtf_name, out_dir):
     
     print("bw_ax ylim: ", bw_ax.get_ylim())
 
-    bw_ax.set_ylim((0, 600000))
-    bw_ax.set_yticks((0, 200000, 400000, 600000))
+    bw_ax.set_ylim((0, 900000))
+    bw_ax.set_yticks((0, 200000, 400000, 600000, 800000, 1000000))
     
 
     fig.tight_layout()
@@ -330,10 +330,10 @@ if __name__ == "__main__":
             print(utils.bcolors.HEADER + f'{arch_name}/{dtf_name}' + utils.bcolors.ENDC)
             gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, network_name)
 
-    print(utils.bcolors.WARNING + f'********** Comparing dtfs ***********'+ utils.bcolors.ENDC)
-    for arch_name in arch_names:
-        print(utils.bcolors.WARNING + f'{arch_name}' + utils.bcolors.ENDC)
-        compare_dtf(arch_name, network_name, dtf_names, nn_layer_names, output_path)
+    # print(utils.bcolors.WARNING + f'********** Comparing dtfs ***********'+ utils.bcolors.ENDC)
+    # for arch_name in arch_names:
+    #     print(utils.bcolors.WARNING + f'{arch_name}' + utils.bcolors.ENDC)
+    #     compare_dtf(arch_name, network_name, dtf_names, nn_layer_names, output_path)
     
     print(utils.bcolors.OKGREEN + f'********** Comparing archs ***********'+ utils.bcolors.ENDC)
     compare_arch(arch_names, network_name, dtf_name, output_path)

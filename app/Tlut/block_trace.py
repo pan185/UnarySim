@@ -1,5 +1,36 @@
 import math
 
+def is_access_discontinuous(
+    requests=None
+):
+    """
+    This function determines if there is jump in the access pattern.
+    """
+    cycle = []
+    ind = 0
+    first = True
+    f_cycle = -1
+    for entry in requests:
+        elems = entry.strip().split(',')
+        elems = prune(elems)
+        elems = [float(x) for x in elems]
+        if first == True:
+            first = False
+            f_cycle = elems[0]
+        if ind > 0 and elems[0] != cycle[ind-1] + 1: 
+            requests.seek(0) # reset file ptr
+            return True, f_cycle
+        cycle.append(elems[0])
+        ind += 1
+    requests.seek(0) # reset file ptr
+    return False, f_cycle
+
+def peek_line(f):
+    pos = f.tell()
+    line = f.readline()
+    f.seek(pos)
+    return line
+
 def sram_profiling(
     trace_file=None,
     word_sz_bytes=4,    # word size in bytes
@@ -26,6 +57,9 @@ def sram_profiling(
     block_sz_word = block_sz_bytes / word_sz_bytes
 
     requests = open(trace_file, 'r')
+
+    # bool indicator for discontinuous access trace
+    disconti_access, prev_cycle = is_access_discontinuous(requests) 
 
     # index list of bank and row for each access
     row_bank_list_new = []
@@ -97,11 +131,22 @@ def sram_profiling(
             max_access = new_access - max_bank_conflict
         # in max_bank_conflict cycles, data loading can be finished
         # and the stalled access is not merged with access for the next cycle.
-        stall_cycles += max_bank_conflict
+        # NEW CHANGE: when access cycles are discontinuous, compute overlap with memory, which hides memory stalls.
+        #             Needs to process the next access cycle to offset this overlapping.
+        if disconti_access == False:
+            stall_cycles += max_bank_conflict
+        else:
+            prev_slack_in_cycle = elems[0] - prev_cycle
+            incr = max_bank_conflict - prev_slack_in_cycle
+            stall_cycles += incr
+            prev_cycle = elems[0]
+            # print(f'DEBUG: confict {max_bank_conflict} causes stall cycle incremented {incr} amount when processing trace at cycle {elems[0]}. There was a slack of {prev_slack_in_cycle}')
         
         # number of active cycles for data loading
         act_cycles += (len(row_bank_list_new) != 0)
-    
+
+    if stall_cycles < 0: stall_cycles = 0
+
     requests.close()
     return tot_word, max_word, tot_access, max_access, act_cycles, stall_cycles, ideal_start_cycle, ideal_end_cycle
 
@@ -267,7 +312,7 @@ def prune(input_list):
 if __name__ == "__main__":
     print('tot_word, max_word, tot_access, tot_row_access, act_cycles, shift_cycles, ideal_start_cycle, ideal_end_cycle')
     output = sram_profiling(
-        trace_file='/home/zhewen/Repo/UnarySim/app/Tlut/output_dir/perfect_mem_12_10/_conv1/os_w_sta/sram_read_input.csv', 
+        trace_file='/home/zhewen/Repo/UnarySim/app/Tlut/output_dir/perfect_mem_12_10/os_w_sta/convnet/_conv1/sram_read_input.csv', 
         word_sz_bytes=0.5,
         block_sz_bytes=16,
         bank=4,
@@ -277,7 +322,7 @@ if __name__ == "__main__":
     print("ifmap", output)
 
     output = sram_profiling(
-        trace_file='/home/zhewen/Repo/UnarySim/app/Tlut/output_dir/perfect_mem_12_10/_conv1/os_w_sta/sram_read_weight.csv', 
+        trace_file='/home/zhewen/Repo/UnarySim/app/Tlut/output_dir/perfect_mem_12_10/os_w_sta/convnet/_conv1/sram_read_weight.csv', 
         word_sz_bytes=1,
         block_sz_bytes=16,
         bank=4,
@@ -287,7 +332,7 @@ if __name__ == "__main__":
     print("weight", output)
 
     output = sram_profiling(
-        trace_file='/home/zhewen/Repo/UnarySim/app/Tlut/output_dir/perfect_mem_12_10/_conv1/os_w_sta/sram_write.csv', 
+        trace_file='/home/zhewen/Repo/UnarySim/app/Tlut/output_dir/perfect_mem_12_10/os_w_sta/convnet/_conv1/sram_write.csv', 
         word_sz_bytes=4,
         block_sz_bytes=16,
         bank=4,

@@ -62,7 +62,7 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
         trace_file=out_dir / 'sram_read_input.csv', 
         word_sz_bytes=word_sz_bytes_input_rd,
         block_sz_bytes=16,
-        bank=8,
+        bank=16,
         min_addr_word=arch.storage[arch.mem_idx['InputBuffer']]['base'],
         max_addr_word=arch.storage[arch.mem_idx['InputBuffer']]['base'] + arch.storage[arch.mem_idx['InputBuffer']]['entries'],
         access_buf=True)
@@ -82,7 +82,7 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
         trace_file=out_dir / 'sram_read_weight.csv', 
         word_sz_bytes=word_sz_bytes_weight_rd,
         block_sz_bytes=16,
-        bank=8,
+        bank=16,
         min_addr_word=arch.storage[arch.mem_idx['WeightBuffer']]['base'],
         max_addr_word=arch.storage[arch.mem_idx['WeightBuffer']]['base'] + arch.storage[arch.mem_idx['WeightBuffer']]['entries'],
         access_buf=True)
@@ -105,7 +105,7 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
         trace_file=out_dir / 'sram_write.csv', 
         word_sz_bytes=word_sz_bytes_output_wr,
         block_sz_bytes=16,
-        bank=8,
+        bank=16,
         min_addr_word=arch.storage[arch.mem_idx['OutputBuffer']]['base'],
         max_addr_word=arch.storage[arch.mem_idx['OutputBuffer']]['base'] + arch.storage[arch.mem_idx['OutputBuffer']]['entries'],
         access_buf=True)

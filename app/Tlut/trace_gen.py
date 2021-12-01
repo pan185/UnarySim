@@ -201,7 +201,7 @@ def cg_profile(prob, arch, dtf, output_dir, nn_name):
                     
                     cycle += single_pass_latency
                 # print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
-                logger.debug(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+                # logger.debug(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
                 # end for for 1 pass (R*S*C)
 
                 # ***************write output***************
@@ -287,7 +287,7 @@ def cg_profile(prob, arch, dtf, output_dir, nn_name):
                     
                     cycle += single_pass_latency
                 # print(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
-                logger.debug(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
+                # logger.debug(f'Debugging sets: \nk={k_set}\nnqp={nqp_set}')
                 # end for for 1 pass (R*S*C)
 
                 # ***************write output***************
@@ -323,10 +323,10 @@ def run_trace_gen(prob_path, arch_path, dtf_path, output_path, nn_name):
     arch = Arch(arch_path)
     dtf = Dataflow(dtf_path)
 
-    print("Debugging")
-    prob.print()
-    arch.print()
-    dtf.print()
+    # print("Debugging")
+    # prob.print()
+    # arch.print()
+    # dtf.print()
 
     out_dir, cg_lat, cg_util = cg_profile(prob, arch, dtf, output_path, nn_name)
     cp.profile(prob, arch, dtf, output_path, out_dir, cg_lat, cg_util)
