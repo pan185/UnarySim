@@ -1,5 +1,21 @@
-- perfect_mem_12_10
-- perfect_mem_16
-- perfect_mem_32
-- perfect_mem_64
-- perfect_mem_128
+0:
+  name: 'w1'
+  archs:
+  - w1_i16
+  - w1_i32
+  - w1_i64
+  - w1_i128
+1:
+  name: 'w2'
+  archs:
+  - w2_i16
+  - w2_i32
+  - w2_i64
+  - w2_i128
+2:
+  name: 'w4'
+  archs:
+  - w4_i16
+  - w4_i32
+  - w4_i64
+  - w4_i128

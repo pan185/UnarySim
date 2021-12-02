@@ -7,7 +7,6 @@ import utils
 import pathlib
 import logging
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
-_CONTENTION_PROCESSING_DIR = os.environ['CONTENTION_PROCESSING_DIR']
 
 def construct_argparser():
     parser = argparse.ArgumentParser(description='Run Configuration')

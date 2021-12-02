@@ -21,7 +21,7 @@ def construct_argparser():
                         default=f'{_TRANCEGEN_DIR}/output_dir',
                         )
     parser.add_argument('-ap',
-                        '--arch_path',
+                        '--arch_set_file_path',
                         type=str,
                         help='Hardware Architecture Path',
                         default=f'{_TRANCEGEN_DIR}/configs/arch/archs.yml',
@@ -70,11 +70,13 @@ def gen_all(arch_names, nn_layer_names, dtf_names, output_path, network_name):
                 output, error = p.communicate()
                 if output != None: print(output)
 
-def parse_names_vec(arch_path, nn_path, dtf_path):
-    arch_names = utils.parse_yaml(arch_path)
+def parse_names_vec(arch_set_path, nn_path, dtf_path):
+    arch_data = utils.parse_yaml(arch_set_path)
+    arch_sets = [arch_data[i]['name'] for i in range(len(arch_data))] 
+    arch_names = [arch_data[i]['archs'] for i in range(len(arch_data))] 
     nn_layer_names = utils.parse_yaml(nn_path)
     dtf_names = utils.parse_yaml(dtf_path)
-    return arch_names, nn_layer_names, dtf_names
+    return arch_sets, arch_names, nn_layer_names, dtf_names
 
 def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name):
     """
@@ -219,7 +221,7 @@ def compare_dtf(arch_name, nn_name, dtf_names, nn_layer_names, out_dir):
     fig.tight_layout()
     plt.savefig(arch_output_path + f'/{nn_name}_dtf_comparison.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
-def compare_arch(arch_set, arch_names, nn_name, dtf_name, out_dir): 
+def compare_arch_set(arch_set, arch_names, nn_name, dtf_name, out_dir): 
     """
     This function compares archs stats
     """
@@ -276,7 +278,10 @@ def compare_arch(arch_set, arch_names, nn_name, dtf_name, out_dir):
     
     print("rt_ax ylim: ", rt_ax.get_ylim())
 
-    if 'w1' in arch_set:
+    if arch_set == 'archs':
+        rt_ax.set_ylim((0, 3700000))
+        rt_ax.set_yticks((0, 1000000, 2000000, 3000000))
+    elif 'w1' in arch_set:
         rt_ax.set_ylim((0, 31000000))
         rt_ax.set_yticks((0, 10000000, 20000000, 30000000))
     elif 'w2' in arch_set:
@@ -309,6 +314,9 @@ def compare_arch(arch_set, arch_names, nn_name, dtf_name, out_dir):
     
     print("bw_ax ylim: ", bw_ax.get_ylim())
 
+    if arch_set == 'archs':
+        bw_ax.set_ylim((0, 50))
+        bw_ax.set_yticks((0, 10, 20, 30, 40, 50))
     if 'w1' in arch_set:
         bw_ax.set_ylim((0, 3.1))
         bw_ax.set_yticks((0, 1, 2, 3))
@@ -322,27 +330,31 @@ def compare_arch(arch_set, arch_names, nn_name, dtf_name, out_dir):
 
     fig.tight_layout()
     plt.savefig(output_path + f'/{nn_name}_{dtf_name}_{arch_set}_comparison_bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    return ideal_arr, stall_arr, i_bw, w_bw, o_bw
+
 
 if __name__ == "__main__":
     parser = construct_argparser()
     args = parser.parse_args()
 
     nn_path = pathlib.Path(args.nn_path).resolve()
-    arch_path = pathlib.Path(args.arch_path).resolve()
+    arch_set_file_path = pathlib.Path(args.arch_set_file_path).resolve()
     dtf_path = pathlib.Path(args.dtf_path).resolve()
     output_path = args.output_dir
     network_name = args.nn_path.split('workloads/')[1].split('_graph')[0]
 
-    arch_set = args.arch_path.split('arch/')[1].split('.yml')[0]
-    print(utils.bcolors.UNDERLINE + f'============= Temporal-LUT simulation kick off for archset {arch_set} =============' + utils.bcolors.ENDC)
+    arch_set_file_name = args.arch_set_file_path.split('arch/')[1].split('.yml')[0]
+    arch_set_names_flat, arch_names, nn_layer_names, dtf_names = parse_names_vec(arch_set_file_path, nn_path, dtf_path)
+    print(utils.bcolors.UNDERLINE + f'============= Temporal-LUT simulation kick off for archset file {arch_set_file_name} =============' + utils.bcolors.ENDC)
+    print(f'- arch set: {arch_set_names_flat}\n- arch: {arch_names}\n- dtf: {dtf_names}\n- nn layers: {nn_layer_names}')
 
-    arch_names, nn_layer_names, dtf_names = parse_names_vec(arch_path, nn_path, dtf_path)
+    arch_names_flat = list(np.concatenate(arch_names))
 
     if args.no_update == False: # bypassing trace gen
-        gen_all(arch_names, nn_layer_names, dtf_names, output_path, network_name)
+        gen_all(arch_names_flat, nn_layer_names, dtf_names, output_path, network_name)
 
     print(utils.bcolors.HEADER + f'********** Generating network stats ***********'+ utils.bcolors.ENDC)
-    for arch_name in arch_names:
+    for arch_name in arch_names_flat:
         for dtf_name in dtf_names:
             print(utils.bcolors.HEADER + f'{arch_name}/{dtf_name}' + utils.bcolors.ENDC)
             gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, network_name)
@@ -353,6 +365,20 @@ if __name__ == "__main__":
     #     compare_dtf(arch_name, network_name, dtf_names, nn_layer_names, output_path)
     
     print(utils.bcolors.OKGREEN + f'********** Comparing archs ***********'+ utils.bcolors.ENDC)
-    compare_arch(arch_set, arch_names, network_name, dtf_name, output_path)
+    ideal_ = []
+    stall_ = []
+    i_bw_ = []
+    w_bw_ = []
+    o_bw_ = []
+    for i in range(len(arch_set_names_flat)):
+        print(utils.bcolors.OKGREEN + f'{arch_set_names_flat[i]}' + utils.bcolors.ENDC)
+        ideal_arr, stall_arr, i_bw, w_bw, o_bw = compare_arch_set(arch_set_names_flat[i], arch_names[i], network_name, dtf_name, output_path)
+        ideal_.append(ideal_arr)
+        stall_.append(stall_arr)
+        i_bw_.append(i_bw)
+        w_bw_.append(w_bw)
+        o_bw_.append(o_bw)
+
+    print(ideal_)
 
 
