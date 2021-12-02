@@ -93,7 +93,7 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     # FIXME: updata later
 
     # Output write
-    word_sz_bytes_output_wr = float(arch.storage[arch.mem_idx['OutputBuffer']]['base']/8)
+    word_sz_bytes_output_wr = float(arch.storage[arch.mem_idx['OutputBuffer']]['bw']/8)
     tot_word_ofmap_wr_sram, \
     max_word_ofmap_wr_sram, \
     tot_access_ofmap_wr_sram, \
@@ -133,7 +133,9 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     # real
     real_max_clk =  ideal_max_clk + \
                         stall_cycles_filter_rd_sram + stall_cycles_ifmap_rd_sram + stall_cycles_ofmap_wr_sram
-    print(f'Stall cycle: input={stall_cycles_ifmap_rd_sram}, weight={stall_cycles_filter_rd_sram}, output={stall_cycles_ofmap_wr_sram}')
+    print(utils.bcolors.OKBLUE + 
+        f'Stall cycle: input={stall_cycles_ifmap_rd_sram}, weight={stall_cycles_filter_rd_sram}, output={stall_cycles_ofmap_wr_sram}' 
+        + utils.bcolors.ENDC)
     real_min_clk =  ideal_min_clk
     real_layer_cycle = real_max_clk - real_min_clk + 1
     real_layer_sec = real_layer_cycle * period / float(10**6)

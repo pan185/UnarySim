@@ -219,7 +219,7 @@ def compare_dtf(arch_name, nn_name, dtf_names, nn_layer_names, out_dir):
     fig.tight_layout()
     plt.savefig(arch_output_path + f'/{nn_name}_dtf_comparison.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
-def compare_arch(arch_names, nn_name, dtf_name, out_dir): 
+def compare_arch(arch_set, arch_names, nn_name, dtf_name, out_dir): 
     """
     This function compares archs stats
     """
@@ -276,18 +276,25 @@ def compare_arch(arch_names, nn_name, dtf_name, out_dir):
     
     print("rt_ax ylim: ", rt_ax.get_ylim())
 
-    rt_ax.set_ylim((0, 5000000))
-    rt_ax.set_yticks((0, 1000000, 2000000, 3000000, 4000000, 5000000))
+    if 'w1' in arch_set:
+        rt_ax.set_ylim((0, 31000000))
+        rt_ax.set_yticks((0, 10000000, 20000000, 30000000))
+    elif 'w2' in arch_set:
+        rt_ax.set_ylim((0, 13000000))
+        rt_ax.set_yticks((0, 5000000, 10000000))
+    elif 'w4' in arch_set:
+        rt_ax.set_ylim((0,   6200000))
+        rt_ax.set_yticks((0, 2000000, 4000000, 6000000))
     
 
     fig.tight_layout()
-    plt.savefig(output_path + f'/{nn_name}_{dtf_name}_arch_comparison_rt.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    plt.savefig(output_path + f'/{nn_name}_{dtf_name}_{arch_set}_comparison_rt.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
     # bw plot
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
     bw_ax.bar(x_idx, i_bw, width, alpha=0.99, color=grey1, hatch=None, label='ireg')
     bw_ax.bar(x_idx, w_bw, width, bottom=i_bw, alpha=0.99, color=grey2, hatch=None, label='wreg')
-    bw_ax.bar(x_idx, o_bw, width, bottom=w_bw, alpha=0.99, color=grey3, hatch=None, label='oreg')
+    bw_ax.bar(x_idx, o_bw, width, bottom=np.array(w_bw) + np.array(i_bw), alpha=0.99, color=grey3, hatch=None, label='oreg')
 
     bw_ax.set_ylabel('Bandwidth (GB/s)')
     bw_ax.minorticks_off()
@@ -302,12 +309,19 @@ def compare_arch(arch_names, nn_name, dtf_name, out_dir):
     
     print("bw_ax ylim: ", bw_ax.get_ylim())
 
-    bw_ax.set_ylim((0, 900000))
-    bw_ax.set_yticks((0, 200000, 400000, 600000, 800000, 1000000))
+    if 'w1' in arch_set:
+        bw_ax.set_ylim((0, 3.1))
+        bw_ax.set_yticks((0, 1, 2, 3))
+    elif 'w2' in arch_set:
+        bw_ax.set_ylim((0, 3.4))
+        bw_ax.set_yticks((0, 1, 2, 3))
+    elif 'w4' in arch_set:
+        bw_ax.set_ylim((0, 4))
+        bw_ax.set_yticks((0, 1, 2, 3, 4))
     
 
     fig.tight_layout()
-    plt.savefig(output_path + f'/{nn_name}_{dtf_name}_arch_comparison_bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    plt.savefig(output_path + f'/{nn_name}_{dtf_name}_{arch_set}_comparison_bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 if __name__ == "__main__":
     parser = construct_argparser()
@@ -318,6 +332,9 @@ if __name__ == "__main__":
     dtf_path = pathlib.Path(args.dtf_path).resolve()
     output_path = args.output_dir
     network_name = args.nn_path.split('workloads/')[1].split('_graph')[0]
+
+    arch_set = args.arch_path.split('arch/')[1].split('.yml')[0]
+    print(utils.bcolors.UNDERLINE + f'============= Temporal-LUT simulation kick off for archset {arch_set} =============' + utils.bcolors.ENDC)
 
     arch_names, nn_layer_names, dtf_names = parse_names_vec(arch_path, nn_path, dtf_path)
 
@@ -336,6 +353,6 @@ if __name__ == "__main__":
     #     compare_dtf(arch_name, network_name, dtf_names, nn_layer_names, output_path)
     
     print(utils.bcolors.OKGREEN + f'********** Comparing archs ***********'+ utils.bcolors.ENDC)
-    compare_arch(arch_names, network_name, dtf_name, output_path)
+    compare_arch(arch_set, arch_names, network_name, dtf_name, output_path)
 
 

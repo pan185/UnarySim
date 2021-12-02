@@ -316,8 +316,6 @@ def cg_profile(prob, arch, dtf, output_dir, nn_name):
 
     return output_dir, latency, utilization
 
-    
-
 def run_trace_gen(prob_path, arch_path, dtf_path, output_path, nn_name):
     prob = Prob(prob_path)
     arch = Arch(arch_path)
