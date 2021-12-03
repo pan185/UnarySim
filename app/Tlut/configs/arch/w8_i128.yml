@@ -1,7 +1,7 @@
 arch:
   arithmetic:
-    dimI: 64
-    dimW: 1
+    dimI: 128
+    dimW: 8
     bwI: 4
     bwW: 8
     instances: 1

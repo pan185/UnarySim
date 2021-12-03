@@ -28,6 +28,34 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+class cor:
+    grey1 = "#D3D3D3"
+    grey2 = "#AAAAAA"
+    grey3 = "#808080"
+    grey4 = '#606060'
+
+    mint1 = '#BBDBBD'
+    mint2 = '#8BD8BD'
+    mint3 = '#4BD4BD'
+    mint4 = '#0BD0BD'
+
+    blue1 = '#829cb8'
+    blue2 = '#6d8cac'
+    blue3 = '#587ba0'
+    blue4 = '#436b94'
+
+    tlut_mint = '#8BD8BD'
+    tlut_navy = '#243665'
+
+    # accuracy color plots
+    tlut_color = "#6ACCBC"
+    fp_color = "#FF7F7F"
+    fxp_color = "#D783FF"
+    hub_color = '#7A81FF'
+
+    # patterns
+    patterns = [ "////" ,  "...."]
+
 def setup_logging(module_name, logger):
     # logging setup
     def logfilename():

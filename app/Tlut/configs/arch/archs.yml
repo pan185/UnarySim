@@ -1,21 +1,35 @@
+# 0:
+#   name: 'w1'
+#   archs:
+#   - w1_i16
+#   - w1_i32
+#   - w1_i64
+#   - w1_i128
 0:
-  name: 'w1'
-  archs:
-  - w1_i16
-  - w1_i32
-  - w1_i64
-  - w1_i128
-1:
   name: 'w2'
   archs:
   - w2_i16
   - w2_i32
   - w2_i64
   - w2_i128
-2:
+1:
   name: 'w4'
   archs:
   - w4_i16
   - w4_i32
   - w4_i64
   - w4_i128
+2:
+  name: 'w8'
+  archs:
+  - w8_i16
+  - w8_i32
+  - w8_i64
+  - w8_i128
+3:
+  name: 'w16'
+  archs:
+  - w16_i16
+  - w16_i32
+  - w16_i64
+  - w16_i128

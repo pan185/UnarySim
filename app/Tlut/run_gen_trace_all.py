@@ -9,6 +9,7 @@ import os.path
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.font_manager
+from utils import cor
 
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
 
@@ -171,26 +172,20 @@ def compare_dtf(arch_name, nn_name, dtf_names, nn_layer_names, out_dir):
     fig_h = 1
     fig_w = 3.3115
 
-    # colors
-    grey1 = "#AAAAAA"
-    grey2 = "#D3D3D3"
-    # patterns
-    patterns = [ "/" ,  "."]
-
     x_axis = nn_layer_names
     x_idx = np.arange(len(x_axis))
 
     width = 0.3
 
     fig, power_ax = plt.subplots(figsize=(fig_w, fig_h))
-    power_ax.bar(x_idx - 0.5 * width, ideal0, width, alpha=0.99, color=grey1, hatch=patterns[0], label='ideal '+dtf_names[0])
-    power_ax.bar(x_idx - 0.5 * width, stall0, width, bottom=ideal0, alpha=0.99, color=grey2, hatch=patterns[0], label='stall '+dtf_names[0])
+    power_ax.bar(x_idx - 0.5 * width, ideal0, width, alpha=0.99, color=cor.grey1, hatch=cor.patterns[0], label='ideal '+dtf_names[0])
+    power_ax.bar(x_idx - 0.5 * width, stall0, width, bottom=ideal0, alpha=0.99, color=cor.grey2, hatch=cor.patterns[0], label='stall '+dtf_names[0])
     power_ax.set_ylabel('Latency per layer in cycle')
     power_ax.minorticks_off()
 
     power2_ax = power_ax.twinx()
-    power2_ax.bar(x_idx + 0.5 * width, ideal1, width, alpha=0.99, color=grey1, hatch=patterns[1], label='ideal '+dtf_names[1])
-    power2_ax.bar(x_idx + 0.5 * width, stall1, width, bottom=ideal1, alpha=0.99, color=grey2, hatch=patterns[1], label='stall '+dtf_names[1])
+    power2_ax.bar(x_idx + 0.5 * width, ideal1, width, alpha=0.99, color=cor.grey1, hatch=cor.patterns[1], label='ideal '+dtf_names[1])
+    power2_ax.bar(x_idx + 0.5 * width, stall1, width, bottom=ideal1, alpha=0.99, color=cor.grey2, hatch=cor.patterns[1], label='stall '+dtf_names[1])
     power2_ax.yaxis.set_visible(False)
     # power2_ax.set_yticklabels('')
 
@@ -249,13 +244,6 @@ def compare_arch_set(arch_set, arch_names, nn_name, dtf_name, out_dir):
     fig_h = 1
     fig_w = 3.3115
 
-    # colors
-    grey1 = "#AAAAAA"
-    grey2 = "#D3D3D3"
-    grey3 = "#808080"
-    # patterns
-    patterns = [ "/" ,  "."]
-
     x_axis = arch_names
     x_idx = np.arange(len(x_axis))
 
@@ -263,8 +251,8 @@ def compare_arch_set(arch_set, arch_names, nn_name, dtf_name, out_dir):
 
     # runtime plot
     fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
-    rt_ax.bar(x_idx, ideal_arr, width, alpha=0.99, color=grey1, hatch=None, label='ideal')
-    rt_ax.bar(x_idx, stall_arr, width, bottom=ideal_arr, alpha=0.99, color=grey2, hatch=None, label='stall')
+    rt_ax.bar(x_idx, ideal_arr, width, alpha=0.99, color=cor.grey1, hatch=None, label='ideal')
+    rt_ax.bar(x_idx, stall_arr, width, bottom=ideal_arr, alpha=0.99, color=cor.grey2, hatch=None, label='stall')
     rt_ax.set_ylabel('Latency in cycle')
     rt_ax.minorticks_off()
 
@@ -297,9 +285,9 @@ def compare_arch_set(arch_set, arch_names, nn_name, dtf_name, out_dir):
 
     # bw plot
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
-    bw_ax.bar(x_idx, i_bw, width, alpha=0.99, color=grey1, hatch=None, label='ireg')
-    bw_ax.bar(x_idx, w_bw, width, bottom=i_bw, alpha=0.99, color=grey2, hatch=None, label='wreg')
-    bw_ax.bar(x_idx, o_bw, width, bottom=np.array(w_bw) + np.array(i_bw), alpha=0.99, color=grey3, hatch=None, label='oreg')
+    bw_ax.bar(x_idx, i_bw, width, alpha=0.99, color=cor.grey1, hatch=None, label='ireg')
+    bw_ax.bar(x_idx, w_bw, width, bottom=i_bw, alpha=0.99, color=cor.grey2, hatch=None, label='wreg')
+    bw_ax.bar(x_idx, o_bw, width, bottom=np.array(w_bw) + np.array(i_bw), alpha=0.99, color=cor.grey3, hatch=None, label='oreg')
 
     bw_ax.set_ylabel('Bandwidth (GB/s)')
     bw_ax.minorticks_off()
@@ -332,6 +320,117 @@ def compare_arch_set(arch_set, arch_names, nn_name, dtf_name, out_dir):
     plt.savefig(output_path + f'/{nn_name}_{dtf_name}_{arch_set}_comparison_bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
     return ideal_arr, stall_arr, i_bw, w_bw, o_bw
 
+def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, i_bw_, w_bw_, o_bw_):
+    # TODO: Make pretty
+    font = {'family':'Times New Roman', 'size': 5}
+    matplotlib.rc('font', **font)
+    my_dpi = 300
+    fig_h = 1
+    fig_w = 3.3115
+
+    x_axis = arch_set_names_flat
+    x_axis_real = arch_names_flat
+    x_idx = np.arange(len(x_axis))
+    x_idx_real = np.arange(len(x_axis_real))
+
+    width = 0.1 # the width of the bars
+
+    labels = x_axis
+
+    x = np.arange(len(labels))  # the label locations
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ireg0 = [i[0] for i in i_bw_]
+    wreg0 = [w[0] for w in w_bw_]
+    rects1 = ax.bar(x - width - width/2, ireg0, width, bottom=None, alpha=0.99, color=cor.grey1, hatch=None, label='i16 ireg')
+    rects1_2 = ax.bar(x - width - width/2, wreg0, width, bottom=ireg0, alpha=0.99, color=cor.mint1, hatch=None, label='i16 wreg')
+    rects1_3 = ax.bar(x - width - width/2, [o[0] for o in o_bw_], width, bottom=np.array(ireg0) + np.array(wreg0), alpha=0.99, color=cor.blue1, hatch=None, label='i16 oreg')
+    ireg1 = [i[1] for i in i_bw_]
+    wreg1 = [w[1] for w in w_bw_]
+    rects2 = ax.bar(x - width/2, ireg1, width, bottom=None, alpha=0.99, color=cor.grey2, hatch=None, label='i32 ireg')
+    rects2_2 = ax.bar(x - width/2, wreg1, width, bottom=ireg1, alpha=0.99, color=cor.mint2, hatch=None, label='i32 wreg')
+    rects2_3 = ax.bar(x - width/2, [o[1] for o in o_bw_], width, bottom=np.array(ireg1) + np.array(wreg1), alpha=0.99, color=cor.blue2, hatch=None, label='i32 oreg')
+    ireg2 = [i[2] for i in i_bw_]
+    wreg2 = [w[2] for w in w_bw_]
+    rects3 = ax.bar(x + width/2, ireg2, width, bottom=None, alpha=0.99, color=cor.grey3, hatch=None, label='i64 ireg')
+    rects3_2 = ax.bar(x + width/2, wreg2, width, bottom=ireg2, alpha=0.99, color=cor.mint3, hatch=None, label='i64 wreg')
+    rects3_3 = ax.bar(x + width/2, [o[2] for o in o_bw_], width, bottom=np.array(ireg2) + np.array(wreg2), alpha=0.99, color=cor.blue3, hatch=None, label='i64 oreg')
+    ireg3 = [i[3] for i in i_bw_]
+    wreg3 = [w[3] for w in w_bw_]
+    rects4 = ax.bar(x + width + width/2, ireg3, width, bottom=None, alpha=0.99, color=cor.grey4, hatch=None, label='i128 ireg')
+    rects4_2 = ax.bar(x + width + width/2, wreg3, width, bottom=ireg3, alpha=0.99, color=cor.mint4, hatch=None, label='i128 wreg')
+    rects4_3 = ax.bar(x + width + width/2, [o[3] for o in o_bw_], width, bottom=np.array(ireg3) + np.array(wreg3), alpha=0.99, color=cor.blue4, hatch=None, label='i128 oreg')
+    
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Bandwidth (GB/s)')
+    # ax.set_xticks(x, labels)
+    # ax.legend()
+
+    # ax.bar_label(rects1, padding=3)
+    # ax.bar_label(rects2, padding=3)
+
+    ax.minorticks_off()
+
+    bars, labels = ax.get_legend_handles_labels()
+    
+    plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
+    ax.set_xticks(x_idx)
+    ax.set_xticklabels(x_axis)
+    plt.yscale("linear")
+    ax.legend(bars, labels, loc="upper center", ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
+    
+    print("ax ylim: ", ax.get_ylim())
+
+    # ax.set_ylim((0, 30000000))
+    # ax.set_yticks((0, 10000000, 20000000, 30000000))
+
+    fig.tight_layout()
+    plt.savefig(output_path + f'/bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+
+    # bw plots
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ideal0 = [ideal[0] for ideal in ideal_]
+    rects1 = ax.bar(x - width - width/2, ideal0, width, bottom=None, alpha=0.99, color=cor.grey1, hatch=None, label='i16 ideal')
+    rects1_2 = ax.bar(x - width - width/2, [stall[0] for stall in stall_], width, bottom=ideal0, alpha=0.99, color=cor.mint1, hatch=None, label='i16 stall')
+    ideal1 = [ideal[1] for ideal in ideal_]
+    rects2 = ax.bar(x - width/2, ideal1, width, bottom=None, alpha=0.99, color=cor.grey2, hatch=None, label='i32 ideal')
+    rects2_2 = ax.bar(x - width/2, [stall[1] for stall in stall_], width, bottom=ideal1, alpha=0.99, color=cor.mint2, hatch=None, label='i32 stall')
+    ideal2 = [ideal[2] for ideal in ideal_]
+    rects3 = ax.bar(x + width/2, ideal2, width, bottom=None, alpha=0.99, color=cor.grey3, hatch=None, label='i64 ideal')
+    rects3_2 = ax.bar(x + width/2, [stall[2] for stall in stall_], width, bottom=ideal2, alpha=0.99, color=cor.mint3, hatch=None, label='i64 stall')
+    ideal3 = [ideal[3] for ideal in ideal_]
+    rects3 = ax.bar(x + width + width/2, ideal2, width, bottom=None, alpha=0.99, color=cor.grey4, hatch=None, label='i128 ideal')
+    rects3_2 = ax.bar(x + width + width/2, [stall[3] for stall in stall_], width, bottom=ideal3, alpha=0.99, color=cor.mint4, hatch=None, label='i128 stall')
+    
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Latency in cycle')
+    # ax.set_xticks(x, labels)
+    # ax.legend()
+
+    # ax.bar_label(rects1, padding=3)
+    # ax.bar_label(rects2, padding=3)
+
+    ax.minorticks_off()
+
+    bars, labels = ax.get_legend_handles_labels()
+    
+    plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
+    ax.set_xticks(x_idx)
+    ax.set_xticklabels(x_axis)
+
+    # ax.set_xticks(x_idx_real)
+    # ax.set_xticklabels(x_axis_real, rotation=45)
+    # print(x_axis_real)
+
+    plt.yscale("log")
+    ax.legend(bars, labels, loc="upper center", ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
+    
+    print("latency ax ylim: ", ax.get_ylim())
+
+    ax.set_ylim((1, 15000000))
+    ax.set_yticks((1, 100000, 1000000, 10000000, 100000000))
+
+    fig.tight_layout()
+    plt.savefig(output_path + f'/latency.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 if __name__ == "__main__":
     parser = construct_argparser()
@@ -379,6 +478,7 @@ if __name__ == "__main__":
         w_bw_.append(w_bw)
         o_bw_.append(o_bw)
 
-    print(ideal_)
+    print(utils.bcolors.OKCYAN + f'********** Comparing all archs ***********'+ utils.bcolors.ENDC)
+    compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, i_bw_, w_bw_, o_bw_)
 
 

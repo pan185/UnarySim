@@ -1,6 +1,6 @@
 arch:
   arithmetic:
-    dimI: 128
+    dimI: 16
     dimW: 2
     bwI: 4
     bwW: 8
