@@ -322,7 +322,7 @@ def compare_arch_set(arch_set, arch_names, nn_name, dtf_name, out_dir):
 
 def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, i_bw_, w_bw_, o_bw_):
     # TODO: Make pretty
-    font = {'family':'Times New Roman', 'size': 5}
+    font = {'family':'Times New Roman', 'size': 6}
     matplotlib.rc('font', **font)
     my_dpi = 300
     fig_h = 1
@@ -376,8 +376,9 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     ax.set_xticks(x_idx)
     ax.set_xticklabels(x_axis)
     plt.yscale("linear")
-    ax.legend(bars, labels, loc="upper center", ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
-    
+    ax.legend(bars, labels, loc="lower center", bbox_to_anchor=(0.5, -1.45), ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
+    fig.subplots_adjust(bottom=0.8)
+
     print("ax ylim: ", ax.get_ylim())
 
     # ax.set_ylim((0, 30000000))
@@ -422,8 +423,8 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     # print(x_axis_real)
 
     plt.yscale("log")
-    ax.legend(bars, labels, loc="upper center", ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
-    
+    ax.legend(bars, labels, loc="lower center", bbox_to_anchor=(0.5, -0.9), ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
+    fig.subplots_adjust(bottom=0.6)
     print("latency ax ylim: ", ax.get_ylim())
 
     ax.set_ylim((1, 15000000))
