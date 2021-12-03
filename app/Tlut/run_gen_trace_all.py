@@ -169,7 +169,7 @@ def compare_dtf(arch_name, nn_name, dtf_names, nn_layer_names, out_dir):
     font = {'family':'Times New Roman', 'size': 6}
     matplotlib.rc('font', **font)
     my_dpi = 300
-    fig_h = 1
+    fig_h = 2
     fig_w = 3.3115
 
     x_axis = nn_layer_names
@@ -325,7 +325,7 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     font = {'family':'Times New Roman', 'size': 6}
     matplotlib.rc('font', **font)
     my_dpi = 300
-    fig_h = 1
+    fig_h = 1.5
     fig_w = 3.3115
 
     x_axis = arch_set_names_flat
@@ -377,12 +377,12 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     ax.set_xticklabels(x_axis)
     plt.yscale("linear")
     ax.legend(bars, labels, loc="lower center", bbox_to_anchor=(0.5, -1.45), ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
-    fig.subplots_adjust(bottom=0.8)
+    fig.subplots_adjust(bottom=0.45)
 
     print("ax ylim: ", ax.get_ylim())
 
-    # ax.set_ylim((0, 30000000))
-    # ax.set_yticks((0, 10000000, 20000000, 30000000))
+    ax.set_ylim((0, 7))
+    ax.set_yticks((0, 2, 4, 6))
 
     fig.tight_layout()
     plt.savefig(output_path + f'/bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
@@ -424,11 +424,11 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
 
     plt.yscale("log")
     ax.legend(bars, labels, loc="lower center", bbox_to_anchor=(0.5, -0.9), ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
-    fig.subplots_adjust(bottom=0.6)
+    fig.subplots_adjust(bottom=0.32)
     print("latency ax ylim: ", ax.get_ylim())
 
-    ax.set_ylim((1, 15000000))
-    ax.set_yticks((1, 100000, 1000000, 10000000, 100000000))
+    ax.set_ylim((1000000, 15000000))
+    ax.set_yticks((1000000, 10000000, 100000000))
 
     fig.tight_layout()
     plt.savefig(output_path + f'/latency.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)

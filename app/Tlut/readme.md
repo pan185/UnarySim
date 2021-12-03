@@ -51,8 +51,7 @@ Architecture of configuration taken from CoSA: https://github.com/ucb-bar/cosa
 │   ├── <network_name>_<dtf_name>_<arch_set_name>comparison_bw.pdf <b>(whole network bandwidth comparison across one architecture set)</b>
 │   ├── <network_name>_<dtf_name>_<arch_set_name>comparison_rt.pdf <b>(whole network latency comparison across one architecture set)</b>
 │   ├── ...
-│   ├── latency.pdf <b>(whole network latency comparison across all architectures grouped in architecture sets)</b>
-</code></pre>
+│   ├── latency.pdf <b>(whole network latency comparison across all architectures grouped in architecture sets)</b></code></pre>
 ## Trace Generator
 
 ### One-shot profiling instructions:

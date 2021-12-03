@@ -150,6 +150,18 @@ class Arch(object):
         self.mem_levels = len(self.mem_idx.items())
         self.S = self.gen_spatial_constraint()
 
+        # Enforcing input and output memory layout alignment 
+        input_layout_list = list(self.storage[self.mem_idx['InputBuffer']]['layout'])# == 'NCHW':
+        output_layout_list = list(self.storage[self.mem_idx['OutputBuffer']]['layout'])
+        n_ind = input_layout_list.index('N')
+        c_ind = input_layout_list.index('C')
+        h_ind = input_layout_list.index('H')
+        w_ind = input_layout_list.index('W')
+        assert output_layout_list[n_ind] == 'N'
+        assert output_layout_list[c_ind] == 'K'
+        assert output_layout_list[h_ind] == 'Q'
+        assert output_layout_list[w_ind] == 'P'
+
     def gen_spatial_constraint(self):
         """Generate spatial constraints."""
         S = []
