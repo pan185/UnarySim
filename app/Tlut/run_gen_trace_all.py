@@ -79,6 +79,55 @@ def parse_names_vec(arch_set_path, nn_path, dtf_path):
     dtf_names = utils.parse_yaml(dtf_path)
     return arch_sets, arch_names, nn_layer_names, dtf_names
 
+def plot_per_layer_data(data1, data2, data3, type_str, nn_layer_names, output_path):
+    # TODO: Make pretty
+    font = {'family':'Times New Roman', 'size': 5}
+    matplotlib.rc('font', **font)
+    my_dpi = 300
+    fig_h = 1
+    fig_w = 3.3115
+
+    x_axis = nn_layer_names
+    x_idx = np.arange(len(x_axis))
+
+    width = 0.2
+
+    fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
+
+    # runtime plot
+    if type_str == 'lat':
+        type_str_ = 'Latency in cycle'
+        # assert data2 != None
+        # assert data3 == None
+        rt_ax.bar(x_idx, data1, width, alpha=0.99, color=cor.grey1, hatch=None, label='ideal')
+        rt_ax.bar(x_idx, data2, width, bottom=data1, alpha=0.99, color=cor.grey2, hatch=None, label='stall')
+    elif type_str == 'bw':
+        # assert data2 != None
+        # assert data3 != None
+        type_str_ = 'Bandwidth (GB/s)'
+        rt_ax.bar(x_idx, data1, width, alpha=0.99, color=cor.grey1, hatch=None, label='ireg')
+        rt_ax.bar(x_idx, data2, width, bottom=data1, alpha=0.99, color=cor.grey2, hatch=None, label='wreg')
+        rt_ax.bar(x_idx, data2, width, bottom=np.array(data1) + np.array(data2), alpha=0.99, color=cor.grey3, hatch=None, label='oreg')
+    elif type_str == 'util':
+        # assert data2 == None
+        # assert data3 == None
+        type_str_ = 'Utilization %'
+        rt_ax.bar(x_idx, data1, width, alpha=0.99, color=cor.grey1, hatch=None, label=None)
+        
+    rt_ax.set_ylabel(type_str_)
+    rt_ax.minorticks_off()
+    bars, labels = rt_ax.get_legend_handles_labels()
+    
+    plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
+    rt_ax.set_xticks(x_idx)
+    rt_ax.set_xticklabels(x_axis)
+    plt.yscale("linear")
+    if type_str == 'lat' or type_str == 'bw':
+        rt_ax.legend(bars, labels, loc="lower right", ncol=1, frameon=True)
+
+    fig.tight_layout()
+    plt.savefig(output_path + f'{type_str}.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+
 def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name):
     """
     This function generates stats for 1 arch and 1 dtf
@@ -103,11 +152,22 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name)
     dyn_ireg = 0
     dyn_wreg = 0
     dyn_mac = 0
+
+    # array for plots
+    cg_util_ = [] # util plot
+    ideal_rt_cyc_ = [] # lat plot
+    real_rt_cyc_ = [] 
+    real_bw_input_rd_ = [] # bw plot
+    real_bw_wght_rd_ = []
+    real_bw_output_wr_ = []
+
     for layer in nn_layer_names:
         data = utils.parse_json(output_path + '/' + arch_name + '/' + dtf_name + '/' + nn_name + '/' + layer + '/stats.json')
         cg_pe_cycle += data['cg']['pe_cycle']
         cg_util += data['cg']['utilization']
+        cg_util_.append(data['cg']['utilization'])
         ideal_rt_cyc += data['ideal']['runtime']['layer_cycle']
+        ideal_rt_cyc_.append(data['ideal']['runtime']['layer_cycle'])
         ideal_layer_sec = data['ideal']['runtime']['layer_sec']
         ideal_layer_thrpt = data['ideal']['runtime']['layer_throughput']
         ideal_rt_sec += ideal_layer_sec
@@ -118,19 +178,32 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name)
         ideal_bw_output_wr += data['ideal']['bandwidth']['output_wr']
         ideal_bw_total += data['ideal']['bandwidth']['total']
         real_rt_cyc += data['real']['runtime']['layer_cycle']
+        real_rt_cyc_.append(data['real']['runtime']['layer_cycle'])
         real_layer_sec = data['real']['runtime']['layer_sec']
         real_layer_thrpt = data['real']['runtime']['layer_throughput']
         real_rt_sec += real_layer_sec
         real_total_data_so_far = real_rt_sec * real_rt_thrpt
         real_rt_thrpt = float(real_total_data_so_far + real_layer_sec * real_layer_thrpt) / real_rt_sec
         real_bw_input_rd += data['real']['bandwidth']['input_rd']
+        real_bw_input_rd_.append(data['real']['bandwidth']['input_rd'])
         real_bw_wght_rd += data['real']['bandwidth']['weight_rd']
+        real_bw_wght_rd_.append(data['real']['bandwidth']['weight_rd'])
         real_bw_output_wr += data['real']['bandwidth']['output_wr']
+        real_bw_output_wr_.append(data['real']['bandwidth']['output_wr'])
         real_bw_total += data['real']['bandwidth']['total']
         dyn_ireg += data['dynamic_cycle']['ireg']
         dyn_wreg += data['dynamic_cycle']['wreg']
         dyn_mac += data['dynamic_cycle']['mac']
     
+    out_path = output_path + '/' + arch_name + '/' + dtf_name + '/'
+    stall_rt_cyc_ = np.array(real_rt_cyc_)-np.array(ideal_rt_cyc_)
+    plot_per_layer_data(data1=cg_util_, data2=None, data3=None, type_str='util', 
+        nn_layer_names=nn_layer_names, output_path=out_path)
+    plot_per_layer_data(data1=real_bw_input_rd_, data2=real_bw_wght_rd_, data3=real_bw_output_wr_, type_str='bw', 
+        nn_layer_names=nn_layer_names, output_path=out_path)
+    plot_per_layer_data(data1=ideal_rt_cyc_, data2=stall_rt_cyc_, data3=None, type_str='lat', 
+        nn_layer_names=nn_layer_names, output_path=out_path)
+
     json_file = output_path + '/' + arch_name + '/' + dtf_name + '/' + f"{nn_name}.json"
     status_dict = dict()
     status_dict = utils.construct_dict(status_dict,
@@ -141,6 +214,7 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name)
         real_bw_input_rd, real_bw_wght_rd, real_bw_output_wr, real_bw_total, 
         dyn_ireg, dyn_wreg, dyn_mac)
     utils.store_json(json_file, status_dict, indent=4)
+    return cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_
 
 def compare_dtf(arch_name, nn_name, dtf_names, nn_layer_names, out_dir): 
     """
@@ -341,24 +415,24 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ireg0 = [i[0] for i in i_bw_]
     wreg0 = [w[0] for w in w_bw_]
-    rects1 = ax.bar(x - width - width/2, ireg0, width, bottom=None, alpha=0.99, color=cor.grey1, hatch=None, label='i16 ireg')
-    rects1_2 = ax.bar(x - width - width/2, wreg0, width, bottom=ireg0, alpha=0.99, color=cor.mint1, hatch=None, label='i16 wreg')
-    rects1_3 = ax.bar(x - width - width/2, [o[0] for o in o_bw_], width, bottom=np.array(ireg0) + np.array(wreg0), alpha=0.99, color=cor.blue1, hatch=None, label='i16 oreg')
+    rects1 = ax.bar(x - width - width/2, ireg0, width, bottom=None, alpha=0.99, color=cor.tlut_pink, hatch=None, label='i16 ireg')
+    rects1_2 = ax.bar(x - width - width/2, wreg0, width, bottom=ireg0, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i16 wreg')
+    rects1_3 = ax.bar(x - width - width/2, [o[0] for o in o_bw_], width, bottom=np.array(ireg0) + np.array(wreg0), alpha=0.99, color=cor.tlut_blue, hatch=None, label='i16 oreg')
     ireg1 = [i[1] for i in i_bw_]
     wreg1 = [w[1] for w in w_bw_]
-    rects2 = ax.bar(x - width/2, ireg1, width, bottom=None, alpha=0.99, color=cor.grey2, hatch=None, label='i32 ireg')
-    rects2_2 = ax.bar(x - width/2, wreg1, width, bottom=ireg1, alpha=0.99, color=cor.mint2, hatch=None, label='i32 wreg')
-    rects2_3 = ax.bar(x - width/2, [o[1] for o in o_bw_], width, bottom=np.array(ireg1) + np.array(wreg1), alpha=0.99, color=cor.blue2, hatch=None, label='i32 oreg')
+    rects2 = ax.bar(x - width/2, ireg1, width, bottom=None, alpha=0.99, color=cor.tlut_pink, hatch=None, label='i32 ireg')
+    rects2_2 = ax.bar(x - width/2, wreg1, width, bottom=ireg1, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i32 wreg')
+    rects2_3 = ax.bar(x - width/2, [o[1] for o in o_bw_], width, bottom=np.array(ireg1) + np.array(wreg1), alpha=0.99, color=cor.tlut_blue, hatch=None, label='i32 oreg')
     ireg2 = [i[2] for i in i_bw_]
     wreg2 = [w[2] for w in w_bw_]
-    rects3 = ax.bar(x + width/2, ireg2, width, bottom=None, alpha=0.99, color=cor.grey3, hatch=None, label='i64 ireg')
-    rects3_2 = ax.bar(x + width/2, wreg2, width, bottom=ireg2, alpha=0.99, color=cor.mint3, hatch=None, label='i64 wreg')
-    rects3_3 = ax.bar(x + width/2, [o[2] for o in o_bw_], width, bottom=np.array(ireg2) + np.array(wreg2), alpha=0.99, color=cor.blue3, hatch=None, label='i64 oreg')
+    rects3 = ax.bar(x + width/2, ireg2, width, bottom=None, alpha=0.99, color=cor.tlut_pink, hatch=None, label='i64 ireg')
+    rects3_2 = ax.bar(x + width/2, wreg2, width, bottom=ireg2, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i64 wreg')
+    rects3_3 = ax.bar(x + width/2, [o[2] for o in o_bw_], width, bottom=np.array(ireg2) + np.array(wreg2), alpha=0.99, color=cor.tlut_blue, hatch=None, label='i64 oreg')
     ireg3 = [i[3] for i in i_bw_]
     wreg3 = [w[3] for w in w_bw_]
-    rects4 = ax.bar(x + width + width/2, ireg3, width, bottom=None, alpha=0.99, color=cor.grey4, hatch=None, label='i128 ireg')
-    rects4_2 = ax.bar(x + width + width/2, wreg3, width, bottom=ireg3, alpha=0.99, color=cor.mint4, hatch=None, label='i128 wreg')
-    rects4_3 = ax.bar(x + width + width/2, [o[3] for o in o_bw_], width, bottom=np.array(ireg3) + np.array(wreg3), alpha=0.99, color=cor.blue4, hatch=None, label='i128 oreg')
+    rects4 = ax.bar(x + width + width/2, ireg3, width, bottom=None, alpha=0.99, color=cor.tlut_pink, hatch=None, label='i128 ireg')
+    rects4_2 = ax.bar(x + width + width/2, wreg3, width, bottom=ireg3, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i128 wreg')
+    rects4_3 = ax.bar(x + width + width/2, [o[3] for o in o_bw_], width, bottom=np.array(ireg3) + np.array(wreg3), alpha=0.99, color=cor.tlut_blue, hatch=None, label='i128 oreg')
     
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_ylabel('Bandwidth (GB/s)')
@@ -390,17 +464,17 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     # bw plots
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ideal0 = [ideal[0] for ideal in ideal_]
-    rects1 = ax.bar(x - width - width/2, ideal0, width, bottom=None, alpha=0.99, color=cor.grey1, hatch=None, label='i16 ideal')
-    rects1_2 = ax.bar(x - width - width/2, [stall[0] for stall in stall_], width, bottom=ideal0, alpha=0.99, color=cor.mint1, hatch=None, label='i16 stall')
+    rects1 = ax.bar(x - width - width/2, ideal0, width, bottom=None, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i16 ideal')
+    rects1_2 = ax.bar(x - width - width/2, [stall[0] for stall in stall_], width, bottom=ideal0, alpha=0.99, color=cor.tlut_blue, hatch=None, label='i16 stall')
     ideal1 = [ideal[1] for ideal in ideal_]
-    rects2 = ax.bar(x - width/2, ideal1, width, bottom=None, alpha=0.99, color=cor.grey2, hatch=None, label='i32 ideal')
-    rects2_2 = ax.bar(x - width/2, [stall[1] for stall in stall_], width, bottom=ideal1, alpha=0.99, color=cor.mint2, hatch=None, label='i32 stall')
+    rects2 = ax.bar(x - width/2, ideal1, width, bottom=None, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i32 ideal')
+    rects2_2 = ax.bar(x - width/2, [stall[1] for stall in stall_], width, bottom=ideal1, alpha=0.99, color=cor.tlut_blue, hatch=None, label='i32 stall')
     ideal2 = [ideal[2] for ideal in ideal_]
-    rects3 = ax.bar(x + width/2, ideal2, width, bottom=None, alpha=0.99, color=cor.grey3, hatch=None, label='i64 ideal')
-    rects3_2 = ax.bar(x + width/2, [stall[2] for stall in stall_], width, bottom=ideal2, alpha=0.99, color=cor.mint3, hatch=None, label='i64 stall')
+    rects3 = ax.bar(x + width/2, ideal2, width, bottom=None, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i64 ideal')
+    rects3_2 = ax.bar(x + width/2, [stall[2] for stall in stall_], width, bottom=ideal2, alpha=0.99, color=cor.tlut_blue, hatch=None, label='i64 stall')
     ideal3 = [ideal[3] for ideal in ideal_]
-    rects3 = ax.bar(x + width + width/2, ideal2, width, bottom=None, alpha=0.99, color=cor.grey4, hatch=None, label='i128 ideal')
-    rects3_2 = ax.bar(x + width + width/2, [stall[3] for stall in stall_], width, bottom=ideal3, alpha=0.99, color=cor.mint4, hatch=None, label='i128 stall')
+    rects3 = ax.bar(x + width + width/2, ideal2, width, bottom=None, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i128 ideal')
+    rects3_2 = ax.bar(x + width + width/2, [stall[3] for stall in stall_], width, bottom=ideal3, alpha=0.99, color=cor.tlut_blue, hatch=None, label='i128 stall')
     
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_ylabel('Latency in cycle')
@@ -457,7 +531,8 @@ if __name__ == "__main__":
     for arch_name in arch_names_flat:
         for dtf_name in dtf_names:
             print(utils.bcolors.HEADER + f'{arch_name}/{dtf_name}' + utils.bcolors.ENDC)
-            gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, network_name)
+            cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_ = gen_network_stats(
+                arch_name, nn_layer_names, dtf_name, output_path, network_name)
 
     # print(utils.bcolors.WARNING + f'********** Comparing dtfs ***********'+ utils.bcolors.ENDC)
     # for arch_name in arch_names:

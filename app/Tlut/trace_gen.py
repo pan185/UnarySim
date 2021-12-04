@@ -330,9 +330,6 @@ def run_trace_gen(prob_path, arch_path, dtf_path, output_path, nn_name):
     cp.profile(prob, arch, dtf, output_path, out_dir, cg_lat, cg_util)
     # return out_dir, cg_lat, cg_util
     
-    
-
-
 if __name__ == "__main__":
     parser = construct_argparser()
     args = parser.parse_args()

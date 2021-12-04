@@ -10,6 +10,17 @@ Architecture of configuration taken from CoSA: https://github.com/ucb-bar/cosa
 - json
 
 ## Directory Structure
+<pre><code>├── <b>configs</b> (See section <i>config directory structure</i>)
+├── <b>output_dir</b> (See section <i>output directory structure</i>)
+├── block_trace.py
+├── contention_processing.py
+├── readme.md
+├── run_gen_trace_all.py
+├── trace_gen.py
+├── tracegen_parse.py
+├── utils.py</code></pre>
+
+### Config Directory Structure
 <pre><code>├── configs
 │   ├── arch
 │   │   ├── archs.yml
@@ -23,15 +34,7 @@ Architecture of configuration taken from CoSA: https://github.com/ucb-bar/cosa
 │   │   ├── convnet_graph
 │   │   │   ├── layers.yml
 │   │   │   ├── <layer_name1>.yml
-│   │   │   ├── <layer_name2>.yml
-├── <b>output_dir</b> (See section <i>output directory structure</i>)
-├── block_trace.py
-├── contention_processing.py
-├── readme.md
-├── run_gen_trace_all.py
-├── trace_gen.py
-├── tracegen_parse.py
-├── utils.py</code></pre>
+│   │   │   ├── <layer_name2>.yml</code></pre>
 
 ### Output Directory Structure
 <code><pre>├── output_dir
@@ -70,10 +73,3 @@ For now only the *output stationary dataflow* is supported.
 Reference code from https://github.com/diwu1990/uSystolic-Sim/blob/main/simHw/block_trace.py
 
 Taking SRAM contention into consideration and add additional stalls due to memory contention.
-
-<pre><code>However, I have another option.
-I can use a code block that works very nicely 
-but I can not <b>bold text</b> a particular part of the code
-<a href="https://meta.stackexchange.com/q/243709">I want to stand out.</a>
-Just to make it easier to locate.
-Nor can I make the font smaller and get rid of that ugly scroll bar. It's just slightly too wide.</code></pre>
