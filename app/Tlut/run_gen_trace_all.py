@@ -556,5 +556,3 @@ if __name__ == "__main__":
 
     print(utils.bcolors.OKCYAN + f'********** Comparing all archs ***********'+ utils.bcolors.ENDC)
     compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, i_bw_, w_bw_, o_bw_)
-
-
