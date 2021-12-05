@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.NOTSET)  # capture everything
 logger.disabled = True
 
+# csv parsing
+import csv
+
 class bcolors:
     """
     Reference from: 
@@ -24,8 +27,9 @@ class bcolors:
     OKGREEN = '\033[92m'
     WARNING = '\033[93m'
     FAIL = '\033[91m'
-    ENDC = '\033[0m'
+    ENDC = '\033[0;0m'
     BOLD = '\033[1m'
+    CHEEZY = '\033[2;31;43m'
     UNDERLINE = '\033[4m'
 
 class cor:
@@ -202,4 +206,21 @@ def get_network_stats(arch_name, nn_name, dtf_name, base_out_dir):
     real_output_wr = data['real']['bandwidth']['output_wr']
     return ideal_rt_cyc, real_rt_cyc-ideal_rt_cyc, real_input_rd, real_weight_rd, real_output_wr
 
+def prune(input_list):
+    l = []
 
+    for e in input_list:
+        e = e.strip() # remove the leading and trailing characters, here space
+        if e != '' and e != ' ':
+            l.append(e)
+
+    return l
+
+def get_all_values_for_given_key(csvFile, key_str, rtype='float'):
+    dict_reader = csv.DictReader(csvFile)
+    list_ = [row[key_str] for row in dict_reader]
+    if rtype == 'float':
+        return list(map(float, prune(list_)))
+    elif rtype == 'int':
+        return list(map(int, prune(list_)))
+    else: print(f'Unknown return type for csv reading!')

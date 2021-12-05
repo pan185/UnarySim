@@ -1,3 +1,5 @@
+# This file defines all the architecture sets.
+
 # 0:
 #   name: 'w1'
 #   archs:
@@ -34,9 +36,16 @@
   - w16_i64
   - w16_i128
 4:
-  name: 'square'
+  name: 'w32'
   archs:
-  - perfect_mem_16
-  - perfect_mem_32
-  - perfect_mem_64
-  - perfect_mem_128
+  - w32_i16
+  - w32_i32
+  - w32_i64
+  - w32_i128
+# 5:
+#   name: 'square'
+#   archs:
+#   - proj_16_16
+#   - proj_32_32
+#   - proj_64_64
+#   - proj_128_128

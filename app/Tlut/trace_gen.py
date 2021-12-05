@@ -19,6 +19,7 @@ import block_trace as bt
 import contention_processing as cp
 
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # capture everything
 

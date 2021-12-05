@@ -524,7 +524,8 @@ if __name__ == "__main__":
 
     arch_names_flat = list(np.concatenate(arch_names))
 
-    if args.no_update == False: # bypassing trace gen
+    if args.no_update == False: # redoing trace gen
+        print(utils.bcolors.OKBLUE + f'********** Regenerating all traces ***********'+ utils.bcolors.ENDC)
         gen_all(arch_names_flat, nn_layer_names, dtf_names, output_path, network_name)
 
     print(utils.bcolors.HEADER + f'********** Generating network stats ***********'+ utils.bcolors.ENDC)
@@ -534,6 +535,7 @@ if __name__ == "__main__":
             cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_ = gen_network_stats(
                 arch_name, nn_layer_names, dtf_name, output_path, network_name)
 
+    # TODO: add back when new dtf is developed
     # print(utils.bcolors.WARNING + f'********** Comparing dtfs ***********'+ utils.bcolors.ENDC)
     # for arch_name in arch_names:
     #     print(utils.bcolors.WARNING + f'{arch_name}' + utils.bcolors.ENDC)

@@ -9,6 +9,10 @@ Architecture of configuration taken from CoSA: https://github.com/ucb-bar/cosa
 - pyyaml
 - json
 
+## Setup Instruction
+
+Run `source setup_tlut.sh` to set up relavant paths.
+
 ## Directory Structure
 <pre><code>├── <b>configs</b> (See section <i>config directory structure</i>)
 ├── <b>output_dir</b> (See section <i>output directory structure</i>)
