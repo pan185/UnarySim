@@ -9,6 +9,7 @@ from torch.optim.lr_scheduler import StepLR
 from six.moves import urllib
 from matplotlib import pyplot as plt
 import numpy as np
+from UnarySim.kernel.utils import tensor_unary_outlier
 
 opener = urllib.request.build_opener()
 opener.addheaders = [('User-agent', 'Mozilla/5.0')]
@@ -48,12 +49,17 @@ def train(args, model, device, train_loader, optimizer, epoch):
 
 def test(model, device, test_loader):
     model.eval()
-    model.fc1.weight.data = torch.round(model.fc1.weight.data*128)/128
+    print(f'orig max={model.fc1.weight.data.max()}, orig min={model.fc1.weight.data.min()}')
+    model.fc1.weight.data = (torch.round(model.fc1.weight.data*128)/128) # for sw inference, weight within [-1, 1] => [-128, 128] 9bit
+    tensor_unary_outlier(model.fc1.weight)
+    model.fc1.weight.data.mul_(128).clamp_(-127, 127) # for fpga implementation loading, weight within [-127, 127] 8bit
+    model.fc1.weight.data.div_(128)
+    print(f'orig max={model.fc1.weight.data.max()}, orig min={model.fc1.weight.data.min()}')
     test_loss = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
-            data = torch.round(data*16)/16
+            data = torch.round(data*15)/15
             data, target = data.to(device), target.to(device)
             output = model(data)
             test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
@@ -74,7 +80,7 @@ def main():
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                         help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=6, metavar='N',
+    parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
                         help='learning rate (default: 1.0)')
@@ -129,13 +135,17 @@ def main():
             test(model, device, test_loader)
             scheduler.step()
     else: 
-        model.load_state_dict(torch.load('/home/zhewen/Repo/UnarySim/mnist_cnn_slp.pt'))
+        model.load_state_dict(torch.load('mnist_cnn_slp.pt'))
         test(model, device, test_loader)
-        
-    np.savetxt('weight.txt', ((model.fc1.weight.data*128).int()), fmt="%d")
+    
+    print(f'max weight={(model.fc1.weight.data.mul(128).clamp(-127, 127)).max()}, \
+            min weight={(model.fc1.weight.data.mul(128).clamp(-127, 127)).min()}, \
+            mean={(model.fc1.weight.data.mul(128).clamp(-127, 127)).mean()}, \
+            median={(model.fc1.weight.data.mul(128).clamp(-127, 127)).median()}')
+    np.savetxt('/home/zhewen/Repo/UnarySim/app/uSystolic/slp/weight.txt', (model.fc1.weight.data.mul(128).clamp(-127, 127)), fmt="%d")
     print('Weight saved!')
 
-    if args.save_model:
+    if args.save_model and args.retrain:
         torch.save(model.state_dict(), "mnist_cnn_slp.pt")
 
 
