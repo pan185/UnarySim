@@ -1,0 +1,4 @@
+Layer,	Type,	Cycle Total (Cycles),	Time Total (Secs),	Throughput (Frames/sec)	
+Conv1,	GEMM,	3528.0,	8.82e-06,	113378.68480725623,	
+Conv2,	GEMM,	28080.0,	7.02e-05,	14245.014245014245,	
+c_32_04b_bp_001c_testnet_ddr3_w__spm,	All,	31608.0,	7.902e-05,	12655.024044545686,	

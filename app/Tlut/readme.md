@@ -20,6 +20,7 @@ Run `source setup_tlut.sh` to set up relavant paths.
 ├── contention_processing.py
 ├── readme.md
 ├── run_gen_trace_all.py
+├── tlut_systolic_perf_projection.py
 ├── trace_gen.py
 ├── tracegen_parse.py
 ├── utils.py</code></pre>
@@ -27,18 +28,19 @@ Run `source setup_tlut.sh` to set up relavant paths.
 ### Config Directory Structure
 <pre><code>├── configs
 │   ├── arch
+│   │   ├── arch_tlut_systolic_projection.yml
 │   │   ├── archs.yml
-│   │   ├── <arch_name1>.yml
-│   │   ├── <arch_name2>.yml
+│   │   ├── [arch_name1].yml
+│   │   ├── [arch_name2].yml
 │   ├── dataflow
 │   │   ├── dtfs.yml
-│   │   ├── <dtf_name1>.yml
-│   │   ├── <dtf_name2>.yml
+│   │   ├── [dtf_name1].yml
+│   │   ├── [dtf_name2].yml
 │   ├── workloads
 │   │   ├── convnet_graph
 │   │   │   ├── layers.yml
-│   │   │   ├── <layer_name1>.yml
-│   │   │   ├── <layer_name2>.yml</code></pre>
+│   │   │   ├── [layer_name1].yml
+│   │   │   ├── [layer_name2].yml</code></pre>
 
 ### Output Directory Structure
 <code><pre>├── output_dir
@@ -67,6 +69,7 @@ Run `source setup_tlut.sh` to set up relavant paths.
 2. Change `configs/dataflow/dtfs.yaml` to include all the dataflow configurations for profiling.
 3. Create a yaml file at `configs/workloads/<network name>/layers.yaml `that lists all the nn layers for profiling.
 4. run run_gen_trace_all.py. For example, `python3 run_gen_trace_all.py`
+5. (Optional:) Temporal-LUT vs systolic array performance projection by `python3 tlut_systolic_perf_projection.py`. 
 
 ### Contention-free Trace Generation
 

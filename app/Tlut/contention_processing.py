@@ -60,8 +60,8 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     ideal_end_cycle_ifmap_rd_sram = block_trace.sram_profiling(
         trace_file=out_dir / 'sram_read_input.csv', 
         word_sz_bytes=word_sz_bytes_input_rd,
-        block_sz_bytes=16,
-        bank=16,
+        block_sz_bytes=arch.storage[arch.mem_idx['InputBuffer']]['block'],
+        bank=arch.storage[arch.mem_idx['InputBuffer']]['bank'],
         min_addr_word=arch.storage[arch.mem_idx['InputBuffer']]['base'],
         max_addr_word=arch.storage[arch.mem_idx['InputBuffer']]['base'] + arch.storage[arch.mem_idx['InputBuffer']]['entries'],
         access_buf=True)
@@ -80,8 +80,8 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     ideal_end_cycle_filter_rd_sram = block_trace.sram_profiling(
         trace_file=out_dir / 'sram_read_weight.csv', 
         word_sz_bytes=word_sz_bytes_weight_rd,
-        block_sz_bytes=16,
-        bank=16,
+        block_sz_bytes=arch.storage[arch.mem_idx['WeightBuffer']]['block'],
+        bank=arch.storage[arch.mem_idx['WeightBuffer']]['bank'],
         min_addr_word=arch.storage[arch.mem_idx['WeightBuffer']]['base'],
         max_addr_word=arch.storage[arch.mem_idx['WeightBuffer']]['base'] + arch.storage[arch.mem_idx['WeightBuffer']]['entries'],
         access_buf=True)
@@ -103,8 +103,8 @@ def profile(prob, arch, dtf, output_dir, out_dir, cg_lat, cg_util):
     ideal_end_cycle_ofmap_wr_sram = block_trace.sram_profiling(
         trace_file=out_dir / 'sram_write.csv', 
         word_sz_bytes=word_sz_bytes_output_wr,
-        block_sz_bytes=16,
-        bank=16,
+        block_sz_bytes=arch.storage[arch.mem_idx['OutputBuffer']]['block'],
+        bank=arch.storage[arch.mem_idx['OutputBuffer']]['bank'],
         min_addr_word=arch.storage[arch.mem_idx['OutputBuffer']]['base'],
         max_addr_word=arch.storage[arch.mem_idx['OutputBuffer']]['base'] + arch.storage[arch.mem_idx['OutputBuffer']]['entries'],
         access_buf=True)

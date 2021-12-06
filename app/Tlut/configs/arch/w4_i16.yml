@@ -11,17 +11,23 @@ arch:
     base: 2000000
     entries: 1000000
     instances: 1
-    layout: NKPQ
+    layout: NKQP
+    bank: 16
+    block: 64
   - name: WeightBuffer
     bw: 8
     base: 1000000
     entries: 1000000
     instances: 1
     layout: KRSC
+    bank: 16
+    block: 64
   - name: InputBuffer
     bw: 4
     base: 0
     entries: 1000000
     instances: 1
     layout: NCHW
+    bank: 16
+    block: 64
 

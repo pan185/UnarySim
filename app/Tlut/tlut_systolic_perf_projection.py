@@ -47,6 +47,11 @@ def construct_argparser():
                         help='Bypassing trace gen',
                         default=False,
                         )
+    parser.add_argument('--conv_only',
+                        action='store_true',
+                        help='Only comparing conv layers',
+                        default=False,
+                        )
 
     return parser
 
@@ -127,7 +132,7 @@ def plot_per_layer_data(data1, data2, data3, type_str, nn_layer_names, output_pa
     fig.tight_layout()
     plt.savefig(output_path + f'{type_str}.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
-def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name):
+def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name, conv_only=False):
     """
     This function generates stats for 1 arch and 1 dtf
     """
@@ -214,7 +219,10 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name)
     real_bw_output_wr /= real_rt_sec
     real_bw_total /= real_rt_sec
 
-    json_file = output_path + '/' + arch_name + '/' + dtf_name + '/' + f"{nn_name}.json"
+    if conv_only == True:
+        json_file = output_path + '/' + arch_name + '/' + dtf_name + '/' + f"{nn_name}_convonly.json"
+    else: 
+        json_file = output_path + '/' + arch_name + '/' + dtf_name + '/' + f"{nn_name}.json"
     status_dict = dict()
     status_dict = utils.construct_dict(status_dict,
         cg_pe_cycle, cg_util,
@@ -226,7 +234,7 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name)
     utils.store_json(json_file, status_dict, indent=4)
     return cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_
 
-def projection(tlut_arch_names, output_path, nn_name):
+def projection(tlut_arch_names, output_path, nn_name, conv_only):
     # read tlut bw and lat data
     # runtime: stacked bar
     tlut_lat = []
@@ -234,14 +242,16 @@ def projection(tlut_arch_names, output_path, nn_name):
     tlut_bw = []
 
     for arch_name in arch_names:
-        ideal, stall, i, w, o = utils.get_network_stats(arch_name, nn_name, dtf_name, output_path)
+        ideal, stall, i, w, o = utils.get_network_stats(arch_name, nn_name, dtf_name, output_path, conv_only)
         tlut_lat.append(ideal+stall)
         tlut_bw.append(i+w+o)
     
     # get sys data
-    bsys_bw, bsys_lat = systolic_data.get_bsys_bw_lat()
-    usys_bw, usys_lat = systolic_data.get_usys_bw_lat()
+    bsys_bw, bsys_lat = systolic_data.get_bsys_bw_lat(nn_name, conv_only)
+    usys_bw, usys_lat = systolic_data.get_usys_bw_lat(nn_name, conv_only)
 
+    print(usys_lat)
+    print(bsys_lat)
     # start ploting
     # TODO: Make pretty
     font = {'family':'Times New Roman', 'size': 5}
@@ -255,8 +265,9 @@ def projection(tlut_arch_names, output_path, nn_name):
 
     # runtime plot
     fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
+    
+    rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_mint, ms=4, label='Unary systolic')
     rt_ax.plot(x_idx, bsys_lat, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
-    rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_pink, ms=4, label='Unary systolic')
     rt_ax.plot(x_idx, tlut_lat, '-^', color=cor.tlut_blue, ms=4, label='Temporal_LUT')
     rt_ax.set_ylabel('Latency in cycle')
     rt_ax.minorticks_off()
@@ -276,12 +287,16 @@ def projection(tlut_arch_names, output_path, nn_name):
     # rt_ax.set_yticks((0, 1000000, 2000000, 3000000))
 
     fig.tight_layout()
-    plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_rt.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    if conv_only:
+        plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_rt_convonly.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    else: 
+        plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_rt.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
     # bw plot
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
+    
+    bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_mint, ms=4, label='Unary systolic')
     bw_ax.plot(x_idx, bsys_bw, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
-    bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_pink, ms=4, label='Unary systolic')
     bw_ax.plot(x_idx, tlut_bw, '-^', color=cor.tlut_blue, ms=4, label='Temporal_LUT')
     bw_ax.set_ylabel('Bandwidth (GB/s)')
     bw_ax.minorticks_off()
@@ -301,7 +316,11 @@ def projection(tlut_arch_names, output_path, nn_name):
     # bw_ax.set_yticks((0, 1000000, 2000000, 3000000))
 
     fig.tight_layout()
-    plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+
+    if conv_only: 
+        plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_bw_convonly.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    else: 
+        plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 if __name__ == "__main__":
     parser = construct_argparser()
@@ -312,6 +331,11 @@ if __name__ == "__main__":
     dtf_path = pathlib.Path(args.dtf_path).resolve()
     output_path = args.output_dir
     network_name = args.nn_path.split('workloads/')[1].split('_graph')[0]
+
+    conv_only = args.conv_only
+    if conv_only: 
+        nn_conv_only_path = args.nn_path.split('layers')[0]+'layers_conv.yaml'
+        nn_path = pathlib.Path(nn_conv_only_path).resolve()
 
     arch_proj_file_name = args.arch_proj_file_path.split('arch/')[1].split('.yml')[0]
     arch_names, nn_layer_names, dtf_names = parse_names_proj(arch_proj_file_path, nn_path, dtf_path)
@@ -328,7 +352,7 @@ if __name__ == "__main__":
         for dtf_name in dtf_names:
             print(utils.bcolors.HEADER + f'{arch_name}/{dtf_name}' + utils.bcolors.ENDC)
             cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_ = gen_network_stats(
-                arch_name, nn_layer_names, dtf_name, output_path, network_name)
+                arch_name, nn_layer_names, dtf_name, output_path, network_name, conv_only)
 
     print(utils.bcolors.OKGREEN + f'********** Projection ***********'+ utils.bcolors.ENDC)
-    projection(arch_names, output_path, network_name)
+    projection(arch_names, output_path, network_name, conv_only)
