@@ -35,7 +35,7 @@ def construct_argparser():
                         '--arch_path',
                         type=str,
                         help='Hardware Architecture Path',
-                        default=f'{_TRANCEGEN_DIR}/configs/arch/perfect_mem_128.yml',
+                        default=f'{_TRANCEGEN_DIR}/configs/arch/proj_12_10.yml',
                         )
 
     parser.add_argument('-pp',
@@ -49,7 +49,7 @@ def construct_argparser():
                         '--dtf_path',
                         type=str,
                         help='Datfflow Path',
-                        default=f'{_TRANCEGEN_DIR}/configs/dataflow/os_w_sta.yaml',
+                        default=f'{_TRANCEGEN_DIR}/configs/dataflow/os_i_sta.yaml',
                         )
 
     return parser
@@ -155,9 +155,16 @@ def cg_profile(prob, arch, dtf, output_dir, nn_name):
                 for i_pass in range(iter_per_pass):
                     # ***************load wght***************
                     wght_addr = []
+
+                    # parsing weight mem layout
+                    weight_layout_list = list(arch.storage[arch.mem_idx['WeightBuffer']]['layout'])
+                    k_ind = weight_layout_list.index('K')
+                    if dtf.type == 'OutputStationary': 
+                        assert k_ind == len(weight_layout_list)-1 # as this will ensure sequential weight reading
+
                     _k =  0
                     while _k < hw_w:
-                        wght_addr.append(wght_base + (cp_k + _k)*R*S*C + i_pass)
+                        wght_addr.append(wght_base + i_pass*K + (cp_k + _k))
                         k_set.add(cp_k +_k)
                         _k += 1
                         if _k + cp_k >= K: break # Note: Unoptimized mapping, no packing for underutilized w vector
@@ -241,9 +248,17 @@ def cg_profile(prob, arch, dtf, output_dir, nn_name):
                 for i_pass in range(iter_per_pass):
                     # ***************load wght***************
                     wght_addr = []
+
+                    # parsing weight mem layout
+                    weight_layout_list = list(arch.storage[arch.mem_idx['WeightBuffer']]['layout'])
+                    k_ind = weight_layout_list.index('K')
+                    if dtf.type == 'OutputStationary': 
+                        assert k_ind == len(weight_layout_list)-1 # as this will ensure sequential weight reading
+                    if k_ind == 0: pass
+                        # streaming pattern: wght_addr.append(wght_base + (cp_k + _k)*R*S*C + i_pass)
                     _k =  0
                     while _k < hw_w:
-                        wght_addr.append(wght_base + (cp_k + _k)*R*S*C + i_pass)
+                        wght_addr.append(wght_base + i_pass*K + (cp_k + _k))
                         k_set.add(cp_k +_k)
                         _k += 1
                         if _k + cp_k >= K: break # Note: Unoptimized mapping, no packing for underutilized w vector

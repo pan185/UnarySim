@@ -11,4 +11,4 @@ problem:
   Wdilation: 1
   Wstride: 4
   shape: cnn-layer
-  et_cycle: 10
+  et_cycle: 16

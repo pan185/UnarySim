@@ -19,7 +19,7 @@ arch:
     base: 1000000
     entries: 1000000
     instances: 1
-    layout: KRSC
+    layout: RSCK
     bank: 8
     block: 32
   - name: InputBuffer
