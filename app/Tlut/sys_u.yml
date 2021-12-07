@@ -1,0 +1,28 @@
+0:
+  name: 'usys_convnet_largeSRAM_convonly'
+  results:
+    - c_4_usys_4
+    - c_8_usys_4
+    - c_16_usys_4
+    - c_32_usys_4
+1:
+  name: 'usys_convnet_largeSRAM'
+  results:
+    - a_4_usys_4
+    - a_8_usys_4
+    - a_16_usys_4
+    - a_32_usys_4
+2:
+  name: 'usys_convnet_smallSRAM_convonly'
+  results:
+    - cm_4_usys_4
+    - cm_8_usys_4
+    - cm_16_usys_4
+    - cm_32_usys_4
+3:
+  name: 'usys_convnet_smallSRAM'
+  results:
+    - am_4_usys_4
+    - am_8_usys_4
+    - am_16_usys_4
+    - am_32_usys_4

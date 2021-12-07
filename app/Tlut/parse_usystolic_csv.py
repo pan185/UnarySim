@@ -2,50 +2,82 @@ import utils
 import os
 
 _USYS_DIR = os.environ['USYS_OUT_DIR']
+_TLUT_HOME = os.environ['TLUT_HOME']
 
-bsys_bw_names = ['bsys_4_bw', 'bsys_8_bw', 'bsys_16_bw', 'bsys_32_bw']
-bsys_lat_names = ['bsys_4_lat', 'bsys_8_lat', 'bsys_16_lat', 'bsys_32_lat']
-usys_bw_names = ['usys_4_bw', 'usys_8_bw', 'usys_16_bw', 'usys_32_bw']
-usys_lat_names = ['usys_4_lat', 'usys_8_lat', 'usys_16_lat', 'usys_32_lat']
+# file postfix
+lat_post = '_detail_real.csv'
 
 # cell header name
-bw_key_str = '	SRAM BW Total (GBytes/sec)'
-lat_key_str = '	Cycle Total (Cycles)'
+# lat file
+byte_fr_key_str = '	SRAM F RD bytes'
+byte_ir_key_str = '	SRAM I RD bytes'
+byte_or_key_str = '	SRAM O RD bytes'
+byte_ow_key_str = '	SRAM O WR bytes'
+lat_key_str = '	SRAM O WR stop'
 
+def construct_file_path(result_name):
+    return f'{_USYS_DIR}/{result_name}/simHwOut/{result_name}{lat_post}'
 
-def get_data_across_names(nn_name, conv_only, names, keystr):
+def construct_names(design, nn_name, conv_only, smallmemory):
+    if conv_only==True and smallmemory==False:
+        ind = 0
+    elif conv_only==False and smallmemory==False:
+        ind = 1
+    elif conv_only==True and smallmemory==True:
+        ind = 2
+    elif conv_only==False and smallmemory==True:
+        ind = 3
+    
+    if nn_name=='alexnet': postfix='_alex'
+    else: postfix=''
+
+    if design == 'usys':
+        file_path = f'{_TLUT_HOME}/sys_u.yml'
+    elif design == 'bsys':
+        file_path = f'{_TLUT_HOME}/sys_b.yml'
+
+    data = utils.parse_yaml(file_path)
+    arr = [i+postfix for i in data[ind]['results']]
+    return arr
+
+def get_data_across_names(names, keystr, post_processing='sum'):
     sys_ = []
     for name in names:
-        if conv_only:
-            csvFile = open(f'{_USYS_DIR}/{nn_name}/conv_only/{name}.csv', "r")
-        else:
-            csvFile = open(f'{_USYS_DIR}/{nn_name}/{name}.csv', "r")
+        path = construct_file_path(name)
+        csvFile = open(path, "r")
         arr = utils.get_all_values_for_given_key(csvFile=csvFile, key_str=keystr)
-        data = arr[len(arr)-1]
+        if post_processing == 'sum':
+            data = sum(arr)
+        elif post_processing == 'max':
+            data = max(arr)
         sys_.append(data)
     return sys_
 
-def get_bsys_bw_lat(nn_name, conv_only):
+def get_sys_bw_lat(design, nn_name, conv_only, smallmemory):
     """
     Returns bw, lat lists.
     """
-    bsys_bw = get_data_across_names(nn_name, conv_only, bsys_bw_names, bw_key_str)
-    bsys_lat = get_data_across_names(nn_name, conv_only, bsys_lat_names, lat_key_str)
-    return bsys_bw, bsys_lat
+    names = construct_names(design, nn_name, conv_only, smallmemory)
+    byte_ir = get_data_across_names(names, byte_ir_key_str, 'sum')
+    byte_fr = get_data_across_names(names, byte_fr_key_str, 'sum')
+    byte_or = get_data_across_names(names, byte_or_key_str, 'sum')
+    byte_ow = get_data_across_names(names, byte_ow_key_str, 'sum')
+    byte = [sum(x) for x in zip(byte_ir, byte_fr, byte_or, byte_ow)]
 
-def get_usys_bw_lat(nn_name, conv_only):
-    """
-    Returns bw, lat lists.
-    """
-    usys_bw = get_data_across_names(nn_name, conv_only, usys_bw_names, bw_key_str)
-    usys_lat = get_data_across_names(nn_name, conv_only, usys_lat_names, lat_key_str)
-    return usys_bw, usys_lat
+    lat = get_data_across_names(names, lat_key_str, 'sum')
+
+    bw = [i / j for i, j in zip(byte, lat)]
+
+    return bw, lat
 
 def main():
     nn_name = 'convnet'
     conv_only = True
-    print(get_bsys_bw_lat(nn_name, conv_only))
-    print(get_usys_bw_lat(nn_name, conv_only))
+    design = 'usys'
+    # nn_name = 'alexnet'
+    smallmemory = False
+    bw, lat = get_sys_bw_lat(design, nn_name, conv_only, smallmemory)
+    print(bw, lat)
 
 if __name__ == "__main__":
     main()

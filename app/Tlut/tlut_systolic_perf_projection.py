@@ -52,6 +52,11 @@ def construct_argparser():
                         help='Only comparing conv layers',
                         default=False,
                         )
+    parser.add_argument('--plot_rect',
+                        action='store_true',
+                        help='Also plot rectangular version',
+                        default=False,
+                        )
 
     return parser
 
@@ -83,7 +88,7 @@ def parse_names_proj(arch_proj_path, nn_path, dtf_path):
     dtf_names = utils.parse_yaml(dtf_path)
     return arch_names, nn_layer_names, dtf_names
 
-def plot_per_layer_data(data1, data2, data3, type_str, nn_layer_names, output_path):
+def plot_per_layer_data(data1, data2, data3, type_str, nn_layer_names, output_path, nn_name):
     # TODO: Make pretty
     font = {'family':'Times New Roman', 'size': 5}
     matplotlib.rc('font', **font)
@@ -130,7 +135,7 @@ def plot_per_layer_data(data1, data2, data3, type_str, nn_layer_names, output_pa
         rt_ax.legend(bars, labels, loc="lower right", ncol=1, frameon=True)
 
     fig.tight_layout()
-    plt.savefig(output_path + f'{type_str}.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    plt.savefig(output_path + f'{nn_name}_{type_str}.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name, conv_only=False):
     """
@@ -202,11 +207,11 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name,
     out_path = output_path + '/' + arch_name + '/' + dtf_name + '/'
     stall_rt_cyc_ = np.array(real_rt_cyc_)-np.array(ideal_rt_cyc_)
     plot_per_layer_data(data1=cg_util_, data2=None, data3=None, type_str='util', 
-        nn_layer_names=nn_layer_names, output_path=out_path)
+        nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
     plot_per_layer_data(data1=real_bw_input_rd_, data2=real_bw_wght_rd_, data3=real_bw_output_wr_, type_str='bw', 
-        nn_layer_names=nn_layer_names, output_path=out_path)
+        nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
     plot_per_layer_data(data1=ideal_rt_cyc_, data2=stall_rt_cyc_, data3=None, type_str='lat', 
-        nn_layer_names=nn_layer_names, output_path=out_path)
+        nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
 
     # taking average
     cg_util /= len(nn_layer_names)
@@ -234,24 +239,35 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name,
     utils.store_json(json_file, status_dict, indent=4)
     return cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_
 
-def projection(tlut_arch_names, output_path, nn_name, conv_only):
+def projection(tlut_arch_names, output_path, nn_name, conv_only, smallmemory, plot_rect):
     # read tlut bw and lat data
     # runtime: stacked bar
     tlut_lat = []
     # bw: stacked bar
     tlut_bw = []
 
-    for arch_name in arch_names:
+    for arch_name in tlut_arch_names:
         ideal, stall, i, w, o = utils.get_network_stats(arch_name, nn_name, dtf_name, output_path, conv_only)
         tlut_lat.append(ideal+stall)
         tlut_bw.append(i+w+o)
     
+    if plot_rect == True:
+        rect_names = [n+'_rect' for n in tlut_arch_names]
+        rect_lat = []
+        rect_bw = []
+        for name in rect_names:
+            ideal, stall, i, w, o = utils.get_network_stats(name, nn_name, dtf_name, output_path, conv_only)
+            rect_lat.append(ideal+stall)
+            rect_bw.append(i+w+o)
+    
     # get sys data
-    bsys_bw, bsys_lat = systolic_data.get_bsys_bw_lat(nn_name, conv_only)
-    usys_bw, usys_lat = systolic_data.get_usys_bw_lat(nn_name, conv_only)
+    bsys_bw, bsys_lat = systolic_data.get_sys_bw_lat(design='bsys', nn_name=nn_name, conv_only=conv_only, smallmemory=smallmemory)
+    usys_bw, usys_lat = systolic_data.get_sys_bw_lat(design='usys', nn_name=nn_name, conv_only=conv_only, smallmemory=smallmemory)
 
     print(usys_lat)
     print(bsys_lat)
+    print(tlut_lat)
+    if plot_rect: print(rect_lat)
     # start ploting
     # TODO: Make pretty
     font = {'family':'Times New Roman', 'size': 5}
@@ -260,15 +276,19 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only):
     fig_h = 1
     fig_w = 3.3115
 
-    x_axis = arch_names
+    x_axis = tlut_arch_names
     x_idx = np.arange(len(x_axis))
 
     # runtime plot
     fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
     
+    ncol = 3
     rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_mint, ms=4, label='Unary systolic')
     rt_ax.plot(x_idx, bsys_lat, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
     rt_ax.plot(x_idx, tlut_lat, '-^', color=cor.tlut_blue, ms=4, label='Temporal_LUT')
+    if plot_rect: 
+        rt_ax.plot(x_idx, rect_lat, '-^', color=cor.tlut_pink, ms=4, label='Temporal_LUT (rectangular)')
+        ncol = 4
     rt_ax.set_ylabel('Latency in cycle')
     rt_ax.minorticks_off()
 
@@ -278,7 +298,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only):
     rt_ax.set_xticks(x_idx)
     rt_ax.set_xticklabels(x_axis)
     plt.yscale("linear")
-    rt_ax.legend(bars, labels, loc="upper center", ncol=3, frameon=True)
+    rt_ax.legend(bars, labels, loc="upper center", ncol=ncol, frameon=True)
     
     print("rt_ax ylim: ", rt_ax.get_ylim())
 
@@ -287,10 +307,16 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only):
     # rt_ax.set_yticks((0, 1000000, 2000000, 3000000))
 
     fig.tight_layout()
-    if conv_only:
-        plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_rt_convonly.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    if conv_only==True:
+        append_convonly = '_convonly'  
     else: 
-        plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_rt.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+        append_convonly = ''
+    if smallmemory==True:
+        append_mem = '_bank8'
+    else:
+        append_mem = '_bank16'
+    
+    plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_rt' + append_mem + append_convonly + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
     # bw plot
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
@@ -298,6 +324,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only):
     bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_mint, ms=4, label='Unary systolic')
     bw_ax.plot(x_idx, bsys_bw, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
     bw_ax.plot(x_idx, tlut_bw, '-^', color=cor.tlut_blue, ms=4, label='Temporal_LUT')
+    if plot_rect: bw_ax.plot(x_idx, rect_bw, '-^', color=cor.tlut_pink, ms=4, label='Temporal_LUT (rectangular)')
     bw_ax.set_ylabel('Bandwidth (GB/s)')
     bw_ax.minorticks_off()
 
@@ -307,7 +334,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only):
     bw_ax.set_xticks(x_idx)
     bw_ax.set_xticklabels(x_axis)
     plt.yscale("linear")
-    bw_ax.legend(bars, labels, loc="upper center", ncol=3, frameon=True)
+    bw_ax.legend(bars, labels, loc="upper center", ncol=ncol, frameon=True)
     
     print("bw_ax ylim: ", bw_ax.get_ylim())
 
@@ -316,15 +343,16 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only):
     # bw_ax.set_yticks((0, 1000000, 2000000, 3000000))
 
     fig.tight_layout()
-
-    if conv_only: 
-        plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_bw_convonly.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
-    else: 
-        plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    
+    plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_bw' + append_mem + append_convonly + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 if __name__ == "__main__":
     parser = construct_argparser()
     args = parser.parse_args()
+
+    if 'smallSRAM' in args.arch_proj_file_path:
+        smallmemory = True
+    else: smallmemory = False
 
     nn_path = pathlib.Path(args.nn_path).resolve()
     arch_proj_file_path = pathlib.Path(args.arch_proj_file_path).resolve()
@@ -343,9 +371,11 @@ if __name__ == "__main__":
     print(f'- arch: {arch_names}\n- dtf: {dtf_names}\n- nn layers: {nn_layer_names}')
     arch_names_flat = arch_names # already flattened
 
+    rect_arch_names_flat = [n+'_rect' for n in arch_names_flat]
     if args.no_update == False: # redoing trace gen
         print(utils.bcolors.OKBLUE + f'********** Regenerating all traces ***********'+ utils.bcolors.ENDC)
         gen_all(arch_names_flat, nn_layer_names, dtf_names, output_path, network_name)
+        if args.plot_rect == True: gen_all(rect_arch_names_flat, nn_layer_names, dtf_names, output_path, network_name)
 
     print(utils.bcolors.HEADER + f'********** Generating network stats ***********'+ utils.bcolors.ENDC)
     for arch_name in arch_names_flat:
@@ -353,6 +383,12 @@ if __name__ == "__main__":
             print(utils.bcolors.HEADER + f'{arch_name}/{dtf_name}' + utils.bcolors.ENDC)
             cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_ = gen_network_stats(
                 arch_name, nn_layer_names, dtf_name, output_path, network_name, conv_only)
+    if args.plot_rect == True:
+        for arch_name_rect in rect_arch_names_flat:
+            for dtf_name in dtf_names:
+                print(utils.bcolors.HEADER + f'{arch_name_rect}/{dtf_name}' + utils.bcolors.ENDC)
+                cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_ = gen_network_stats(
+                    arch_name_rect, nn_layer_names, dtf_name, output_path, network_name, conv_only)
 
     print(utils.bcolors.OKGREEN + f'********** Projection ***********'+ utils.bcolors.ENDC)
-    projection(arch_names, output_path, network_name, conv_only)
+    projection(arch_names, output_path, network_name, conv_only, smallmemory, args.plot_rect)

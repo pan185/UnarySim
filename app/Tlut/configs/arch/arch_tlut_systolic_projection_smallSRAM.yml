@@ -1,0 +1,5 @@
+# This file defines single architecture set for tlut systolic array performance projection
+- proj_16_16_m
+- proj_32_32_m
+- proj_64_64_m
+- proj_128_128_m
