@@ -18,15 +18,19 @@ lat_key_str = '	SRAM O WR stop'
 def construct_file_path(result_name):
     return f'{_USYS_DIR}/{result_name}/simHwOut/{result_name}{lat_post}'
 
-def construct_names(design, nn_name, conv_only, smallmemory):
-    if conv_only==True and smallmemory==False:
+def construct_names(design, nn_name, conv_only, memorysize='l'):
+    if conv_only==True and memorysize=='l':
         ind = 0
-    elif conv_only==False and smallmemory==False:
+    elif conv_only==False and memorysize=='l':
         ind = 1
-    elif conv_only==True and smallmemory==True:
+    elif conv_only==True and memorysize=='m':
         ind = 2
-    elif conv_only==False and smallmemory==True:
+    elif conv_only==False and memorysize=='m':
         ind = 3
+    elif conv_only==True and memorysize=='s':
+        ind = 4
+    elif conv_only==False and memorysize=='s':
+        ind = 5
     
     if nn_name=='alexnet': postfix='_alex'
     else: postfix=''
@@ -53,11 +57,11 @@ def get_data_across_names(names, keystr, post_processing='sum'):
         sys_.append(data)
     return sys_
 
-def get_sys_bw_lat(design, nn_name, conv_only, smallmemory):
+def get_sys_bw_lat(design, nn_name, conv_only, memorysize):
     """
     Returns bw, lat lists.
     """
-    names = construct_names(design, nn_name, conv_only, smallmemory)
+    names = construct_names(design, nn_name, conv_only, memorysize)
     byte_ir = get_data_across_names(names, byte_ir_key_str, 'sum')
     byte_fr = get_data_across_names(names, byte_fr_key_str, 'sum')
     byte_or = get_data_across_names(names, byte_or_key_str, 'sum')
@@ -75,8 +79,8 @@ def main():
     conv_only = True
     design = 'usys'
     # nn_name = 'alexnet'
-    smallmemory = False
-    bw, lat = get_sys_bw_lat(design, nn_name, conv_only, smallmemory)
+    memorysize = 's'
+    bw, lat = get_sys_bw_lat(design, nn_name, conv_only, memorysize)
     print(bw, lat)
 
 if __name__ == "__main__":

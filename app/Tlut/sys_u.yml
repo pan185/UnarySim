@@ -13,16 +13,30 @@
     - a_16_usys_4
     - a_32_usys_4
 2:
-  name: 'usys_convnet_smallSRAM_convonly'
+  name: 'usys_convnet_mediumSRAM_convonly'
   results:
     - cm_4_usys_4
     - cm_8_usys_4
     - cm_16_usys_4
     - cm_32_usys_4
 3:
-  name: 'usys_convnet_smallSRAM'
+  name: 'usys_convnet_mediumSRAM'
   results:
     - am_4_usys_4
     - am_8_usys_4
     - am_16_usys_4
     - am_32_usys_4
+4:
+  name: 'usys_convnet_smallSRAM_convonly'
+  results:
+    - cs_4_usys_4
+    - cs_8_usys_4
+    - cs_16_usys_4
+    - cs_32_usys_4
+5:
+  name: 'usys_convnet_smallSRAM'
+  results:
+    - as_4_usys_4
+    - as_8_usys_4
+    - as_16_usys_4
+    - as_32_usys_4

@@ -13,16 +13,30 @@
     - a_16_bsys_4
     - a_32_bsys_4
 2:
-  name: 'bsys_convnet_smallSRAM_convonly'
+  name: 'bsys_convnet_mediumSRAM_convonly'
   results:
     - cm_4_bsys_4
     - cm_8_bsys_4
     - cm_16_bsys_4
     - cm_32_bsys_4
 3:
-  name: 'bsys_convnet_smallSRAM'
+  name: 'bsys_convnet_mediumSRAM'
   results:
     - am_4_bsys_4
     - am_8_bsys_4
     - am_16_bsys_4
     - am_32_bsys_4
+4:
+  name: 'bsys_convnet_smallSRAM_convonly'
+  results:
+    - cs_4_bsys_4
+    - cs_8_bsys_4
+    - cs_16_bsys_4
+    - cs_32_bsys_4
+5:
+  name: 'bsys_convnet_smallSRAM'
+  results:
+    - as_4_bsys_4
+    - as_8_bsys_4
+    - as_16_bsys_4
+    - as_32_bsys_4

@@ -7,7 +7,7 @@ arch:
     instances: 1
   storage:
   - name: OutputBuffer
-    bw: 32
+    bw: 4
     base: 2000000
     entries: 1000000
     instances: 1

@@ -239,7 +239,7 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name,
     utils.store_json(json_file, status_dict, indent=4)
     return cg_util_, ideal_rt_cyc_, stall_rt_cyc_, real_bw_input_rd_, real_bw_wght_rd_, real_bw_output_wr_
 
-def projection(tlut_arch_names, output_path, nn_name, conv_only, smallmemory, plot_rect):
+def projection(tlut_arch_names, output_path, nn_name, conv_only, memorysize, plot_rect):
     # read tlut bw and lat data
     # runtime: stacked bar
     tlut_lat = []
@@ -261,8 +261,8 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, smallmemory, pl
             rect_bw.append(i+w+o)
     
     # get sys data
-    bsys_bw, bsys_lat = systolic_data.get_sys_bw_lat(design='bsys', nn_name=nn_name, conv_only=conv_only, smallmemory=smallmemory)
-    usys_bw, usys_lat = systolic_data.get_sys_bw_lat(design='usys', nn_name=nn_name, conv_only=conv_only, smallmemory=smallmemory)
+    bsys_bw, bsys_lat = systolic_data.get_sys_bw_lat(design='bsys', nn_name=nn_name, conv_only=conv_only, memorysize=memorysize)
+    usys_bw, usys_lat = systolic_data.get_sys_bw_lat(design='usys', nn_name=nn_name, conv_only=conv_only, memorysize=memorysize)
 
     print(usys_lat)
     print(bsys_lat)
@@ -311,10 +311,12 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, smallmemory, pl
         append_convonly = '_convonly'  
     else: 
         append_convonly = ''
-    if smallmemory==True:
+    if memorysize=='m':
         append_mem = '_bank8'
-    else:
+    elif memorysize == 'l':
         append_mem = '_bank16'
+    elif memorysize == 's':
+        append_mem = '_bank4'
     
     plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_rt' + append_mem + append_convonly + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
@@ -351,8 +353,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if 'smallSRAM' in args.arch_proj_file_path:
-        smallmemory = True
-    else: smallmemory = False
+        memorysize = 's'
+    elif 'mediumSRAM' in args.arch_proj_file_path:
+        memorysize = 'm'
+    else: memorysize = 'l'
 
     nn_path = pathlib.Path(args.nn_path).resolve()
     arch_proj_file_path = pathlib.Path(args.arch_proj_file_path).resolve()
@@ -391,4 +395,4 @@ if __name__ == "__main__":
                     arch_name_rect, nn_layer_names, dtf_name, output_path, network_name, conv_only)
 
     print(utils.bcolors.OKGREEN + f'********** Projection ***********'+ utils.bcolors.ENDC)
-    projection(arch_names, output_path, network_name, conv_only, smallmemory, args.plot_rect)
+    projection(arch_names, output_path, network_name, conv_only, memorysize, args.plot_rect)
