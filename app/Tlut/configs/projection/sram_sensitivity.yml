@@ -1,0 +1,9 @@
+arch:
+  - arch_tlut_systolic_projection
+  - arch_tlut_systolic_projection_mediumSRAM
+  - arch_tlut_systolic_projection_smallSRAM
+workloads:
+  - convnet
+  - alexnet
+dataflow:
+  - dtfs

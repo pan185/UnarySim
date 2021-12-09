@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager
 from utils import cor
 import parse_usystolic_csv as systolic_data
+from os.path import exists
 
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
 
@@ -264,11 +265,12 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, memorysize, plo
     bsys_bw, bsys_lat = systolic_data.get_sys_bw_lat(design='bsys', nn_name=nn_name, conv_only=conv_only, memorysize=memorysize)
     usys_bw, usys_lat = systolic_data.get_sys_bw_lat(design='usys', nn_name=nn_name, conv_only=conv_only, memorysize=memorysize)
 
-    print(usys_lat)
-    print(bsys_lat)
-    print(tlut_lat)
-    if plot_rect: print(rect_lat)
-    # start ploting
+    print("usys=", usys_lat)
+    print('bsys=', bsys_lat)
+    print('tlut=', tlut_lat)
+    if plot_rect: print('tlut-rec=', rect_lat)
+
+    # **************** start ploting ****************
     # TODO: Make pretty
     font = {'family':'Times New Roman', 'size': 5}
     matplotlib.rc('font', **font)
@@ -279,7 +281,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, memorysize, plo
     x_axis = tlut_arch_names
     x_idx = np.arange(len(x_axis))
 
-    # runtime plot
+    # runtime line plot
     fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
     
     ncol = 3
@@ -320,7 +322,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, memorysize, plo
     
     plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_rt' + append_mem + append_convonly + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
-    # bw plot
+    # bw line plot
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
     
     bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_mint, ms=4, label='Unary systolic')
@@ -347,6 +349,8 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, memorysize, plo
     fig.tight_layout()
     
     plt.savefig(output_path + f'/proj_{nn_name}_{dtf_name}_bw' + append_mem + append_convonly + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    
+    return usys_lat, bsys_lat, tlut_lat, usys_bw, bsys_bw, tlut_bw
 
 if __name__ == "__main__":
     parser = construct_argparser()
@@ -395,4 +399,40 @@ if __name__ == "__main__":
                     arch_name_rect, nn_layer_names, dtf_name, output_path, network_name, conv_only)
 
     print(utils.bcolors.OKGREEN + f'********** Projection ***********'+ utils.bcolors.ENDC)
-    projection(arch_names, output_path, network_name, conv_only, memorysize, args.plot_rect)
+    usys_lat, bsys_lat, tlut_lat, usys_bw, bsys_bw, tlut_bw = projection(
+        arch_names, output_path, network_name, conv_only, memorysize, args.plot_rect)
+
+    if not os.path.exists(output_path + f'/projection'):
+        os.makedirs(output_path + f'/projection')
+
+    if conv_only:
+        projection_stats_file = output_path + f'/projection/proj_c_{network_name}_{dtf_name}_percentage.json'
+    else:
+        projection_stats_file = output_path + f'/projection/proj_a_{network_name}_{dtf_name}_percentage.json'
+    print(utils.bcolors.HEADER + f'********** Appending stats to {projection_stats_file}**********' + utils.bcolors.ENDC)
+    
+    file_exists = exists(projection_stats_file)
+    if file_exists:
+        data = utils.parse_json(projection_stats_file)
+    else:
+        data = dict()
+
+    cfg_str = f'{memorysize}_{32}'
+    bsys_lat_pctg = [float(i) / float(j) for i, j in zip(bsys_lat, tlut_lat)]
+    bsys_bw_pctg = [float(i) / float(j) for i, j in zip(bsys_bw, tlut_bw)]
+    usys_lat_pctg = [float(i) / float(j) for i, j in zip(usys_lat, tlut_lat)]
+    usys_bw_pctg = [float(i) / float(j) for i, j in zip(usys_bw, tlut_bw)]
+    bsys_dict = dict()
+    bsys_dict['lat'] = bsys_lat_pctg
+    bsys_dict['bw'] = bsys_bw_pctg
+    usys_dict = dict()
+    usys_dict['lat'] = usys_lat_pctg
+    usys_dict['bw'] = usys_bw_pctg
+    
+    cfg_dict = dict()
+    cfg_dict['bsys'] = bsys_dict
+    cfg_dict['usys'] = usys_dict
+
+    data[cfg_str] = cfg_dict
+
+    utils.store_json(projection_stats_file, data, indent=4)
