@@ -1,7 +1,7 @@
 arch:
   arithmetic:
-    dimI: 128 
-    dimW: 128
+    dimI: 32
+    dimW: 32
     bwI: 4
     bwW: 8
     instances: 1
@@ -13,7 +13,7 @@ arch:
     instances: 1
     layout: NKQP
     bank: 16
-    block: 64
+    block: 32
   - name: WeightBuffer
     bw: 8
     base: 1000000
@@ -21,7 +21,7 @@ arch:
     instances: 1
     layout: RSCK
     bank: 16
-    block: 64
+    block: 32
   - name: InputBuffer
     bw: 4
     base: 0
@@ -29,5 +29,5 @@ arch:
     instances: 1
     layout: NCHW
     bank: 16
-    block: 64
+    block: 32
 
