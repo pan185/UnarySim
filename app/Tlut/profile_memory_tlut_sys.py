@@ -77,21 +77,21 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
             output, error = p.communicate()
             if output != None: print(output)
 
-def plot_percentage(filepath, arch_names, output_path):
+def plot_percentage(filepath, arch_names, output_path, block):
     data = utils.parse_json(filepath)
-    bsys_m_32_lat = data['m_32']['bsys']['lat']
-    bsys_m_32_bw = data['m_32']['bsys']['bw']
-    bsys_s_32_lat = data['s_32']['bsys']['lat']
-    bsys_s_32_bw = data['s_32']['bsys']['bw']
-    bsys_l_32_lat = data['l_32']['bsys']['lat']
-    bsys_l_32_bw = data['l_32']['bsys']['bw']
+    bsys_m_32_lat = data[f'8_{block}']['bsys']['lat']
+    bsys_m_32_bw = data[f'8_{block}']['bsys']['bw']
+    bsys_s_32_lat = data[f'4_{block}']['bsys']['lat']
+    bsys_s_32_bw = data[f'4_{block}']['bsys']['bw']
+    bsys_l_32_lat = data[f'16_{block}']['bsys']['lat']
+    bsys_l_32_bw = data[f'16_{block}']['bsys']['bw']
 
-    usys_m_32_lat = data['m_32']['usys']['lat']
-    usys_m_32_bw = data['m_32']['usys']['bw']
-    usys_s_32_lat = data['s_32']['usys']['lat']
-    usys_s_32_bw = data['s_32']['usys']['bw']
-    usys_l_32_lat = data['l_32']['usys']['lat']
-    usys_l_32_bw = data['l_32']['usys']['bw']
+    usys_m_32_lat = data[f'8_{block}']['usys']['lat']
+    usys_m_32_bw = data[f'8_{block}']['usys']['bw']
+    usys_s_32_lat = data[f'4_{block}']['usys']['lat']
+    usys_s_32_bw = data[f'4_{block}']['usys']['bw']
+    usys_l_32_lat = data[f'16_{block}']['usys']['lat']
+    usys_l_32_bw = data[f'16_{block}']['usys']['bw']
 
     usys_lat = [usys_l_32_lat, [float('NaN')], usys_m_32_lat, [float('NaN')], usys_s_32_lat, [float('NaN')]]
     usys_lat = sum(usys_lat, [])
@@ -175,7 +175,7 @@ if __name__ == "__main__":
         output_path = args.output_dir
 
         pbar = tqdm(arch_proj_top_level_names)
-        for name in arch_proj_top_level_names:
+        for name in pbar:
             arch_proj_top_level_path = f'{_TRANCEGEN_DIR}/configs/arch/'+ name + '.yml'
             if args.plot_only == False: project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output_path, network_names)
             pbar.set_description(f'Projecting {name}')
