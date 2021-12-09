@@ -300,7 +300,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, bank, block, pl
     
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     rt_ax.set_xticks(x_idx)
-    rt_ax.set_xticklabels(x_axis, rotation=45)
+    rt_ax.set_xticklabels(x_axis, rotation=10)
     plt.yscale("linear")
     rt_ax.legend(bars, labels, loc="upper center", ncol=ncol, frameon=True)
     
