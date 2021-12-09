@@ -154,6 +154,7 @@ if __name__ == "__main__":
 
     projection_dict = utils.parse_yaml(args.proj_top_level_file)
     arch_proj_top_level_group_dicts = projection_dict['arch']
+
     for group_dict in arch_proj_top_level_group_dicts:
         arch_proj_top_level_names = group_dict['name']
         block = group_dict['block']

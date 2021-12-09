@@ -1,22 +1,19 @@
 arch:
-  block_32:
-    block: 32
+  - block: 32
     name:
-      - arch_tlut_systolic_projection_bank16_block32
-      - arch_tlut_systolic_projection_bank8_block32
-      - arch_tlut_systolic_projection_bank4_block32
-  block_16:
-    block: 16
+    - arch_tlut_systolic_projection_bank16_block32
+    - arch_tlut_systolic_projection_bank8_block32
+    - arch_tlut_systolic_projection_bank4_block32
+  - block: 16
     name: 
-      - arch_tlut_systolic_projection_bank16_block16
-      - arch_tlut_systolic_projection_bank8_block16
-      - arch_tlut_systolic_projection_bank4_block16
-  block_8:
-    block: 8
+    - arch_tlut_systolic_projection_bank16_block16
+    - arch_tlut_systolic_projection_bank8_block16
+    - arch_tlut_systolic_projection_bank4_block16
+  - block: 8
     name: 
-      - arch_tlut_systolic_projection_bank16_block8
-      - arch_tlut_systolic_projection_bank8_block8
-      - arch_tlut_systolic_projection_bank4_block8s
+    - arch_tlut_systolic_projection_bank16_block8
+    - arch_tlut_systolic_projection_bank8_block8
+    - arch_tlut_systolic_projection_bank4_block8
   
 workloads:
   - convnet
