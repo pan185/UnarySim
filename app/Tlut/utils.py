@@ -227,3 +227,10 @@ def get_all_values_for_given_key(csvFile, key_str, rtype='float'):
     elif rtype == 'int':
         return list(map(int, prune(list_)))
     else: print(f'Unknown return type for csv reading!')
+
+def get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, conv_only):
+    if conv_only:
+        projection_stats_file = output_path + f'/projection/proj_block{block}_{network_name}_{dtf_name}_norm_convonly.json'
+    else:
+        projection_stats_file = output_path + f'/projection/proj_block{block}_{network_name}_{dtf_name}_norm.json'
+    return projection_stats_file

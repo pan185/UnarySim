@@ -401,10 +401,8 @@ if __name__ == "__main__":
     if not os.path.exists(output_path + f'/projection'):
         os.makedirs(output_path + f'/projection')
 
-    if conv_only:
-        projection_stats_file = output_path + f'/projection/proj_c_{network_name}_{dtf_name}_percentage.json'
-    else:
-        projection_stats_file = output_path + f'/projection/proj_a_{network_name}_{dtf_name}_percentage.json'
+    projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, conv_only)
+    
     print(utils.bcolors.HEADER + f'********** Appending stats to {projection_stats_file}**********' + utils.bcolors.ENDC)
     
     file_exists = exists(projection_stats_file)

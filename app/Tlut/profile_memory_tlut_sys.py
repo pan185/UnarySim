@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager
 import numpy as np
 from utils import cor
+from tqdm import tqdm
+
 _TRANCEGEN_DIR = os.environ['TRANCEGEN_DIR']
 
 def construct_argparser():
@@ -172,14 +174,23 @@ if __name__ == "__main__":
         network_names = projection_dict['workloads']
         output_path = args.output_dir
 
+        pbar = tqdm(arch_proj_top_level_names)
         for name in arch_proj_top_level_names:
             arch_proj_top_level_path = f'{_TRANCEGEN_DIR}/configs/arch/'+ name + '.yml'
             if args.plot_only == False: project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output_path, network_names)
+            pbar.set_description(f'Projecting {name}')
 
         # parsing for plotting
         for network_name in network_names:
             for dtf_name in dtf_names:
-                projection_stats_file = output_path + f'/projection/proj_block{block}_{network_name}_{dtf_name}_percentage.json'
+                # conv only
+                projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, True)
+                plot_percentage(filepath=projection_stats_file, 
+                    arch_names=['16_16', '32_32', '64_64', '128_128'], 
+                    output_path=output_path)
+                
+                # all layers
+                projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, False)
                 plot_percentage(filepath=projection_stats_file, 
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
                     output_path=output_path)
