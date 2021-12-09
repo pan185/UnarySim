@@ -132,6 +132,11 @@ def plot_percentage(filepath, arch_names, output_path, block):
     rt_ax.set_xticklabels(x_axis, rotation = 45)
     plt.yscale("linear")
     rt_ax.legend(bars, labels, loc="upper center", ncol=ncol, frameon=True)
+
+    xticks = rt_ax.xaxis.get_major_ticks()
+    for i in range(len(x_axis)):
+        if i % (len(arch_names)-1) == 0:
+            xticks[i].label1.set_visible(False)
     
     print("rt_ax ylim: ", rt_ax.get_ylim())
 
@@ -144,12 +149,51 @@ def plot_percentage(filepath, arch_names, output_path, block):
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     x_idx2 = [1.5, 6.5, 11.5]
     ax2.set_xticks(x_idx2)
-    # TODO: change 64B to 32B
-    ax2.set_xticklabels(['16-bank, 64B', '8-bank, 32B', '4-bank, 32B'])
+    ax2.set_xticklabels([f'16-bank, {block}B', f'8-bank, {block}B', f'4-bank, {block}B'])
 
     fig.tight_layout()
     id_str = filepath.split('projection/')[1].split('.json')[0]
     plt.savefig(output_path + f'/projection/{id_str}_lat' + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+
+    fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
+    
+    ncol = 2
+    bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_blue, ms=4, label='Unary systolic')
+    bw_ax.plot(x_idx, bsys_bw, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
+    bw_ax.axhline(y=1, color='k', linestyle='--',linewidth=0.5)
+    
+    bw_ax.set_ylabel('Normalized bandwidth')
+    bw_ax.minorticks_off()
+
+    bars, labels = bw_ax.get_legend_handles_labels()
+    
+    plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
+    bw_ax.set_xticks(x_idx)
+    bw_ax.set_xticklabels(x_axis, rotation = 45)
+    plt.yscale("linear")
+    bw_ax.legend(bars, labels, loc="upper center", ncol=ncol, frameon=True)
+
+    xticks = bw_ax.xaxis.get_major_ticks()
+    for i in range(len(x_axis)):
+        if i % (len(arch_names)-1) == 0:
+            xticks[i].label1.set_visible(False)
+    
+    print("bw_ax ylim: ", bw_ax.get_ylim())
+
+    # Fine tuning limit and ticks
+    max_val = max(max(usys_bw), max(bsys_bw))
+    bw_ax.set_ylim((0, 1.1*max_val))
+    # rt_ax.set_yticks((0, 1, 2, 3, 4))
+
+    ax2 = bw_ax.twiny()
+    plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
+    x_idx2 = [1.5, 6.5, 11.5]
+    ax2.set_xticks(x_idx2)
+    ax2.set_xticklabels([f'16-bank, {block}B', f'8-bank, {block}B', f'4-bank, {block}B'])
+
+    fig.tight_layout()
+    id_str = filepath.split('projection/')[1].split('.json')[0]
+    plt.savefig(output_path + f'/projection/{id_str}_bw' + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 
 if __name__ == "__main__":
