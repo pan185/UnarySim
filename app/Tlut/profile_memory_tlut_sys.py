@@ -140,6 +140,7 @@ def plot_percentage(filepath, arch_names, output_path):
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     x_idx2 = [1.5, 6.5, 11.5]
     ax2.set_xticks(x_idx2)
+    # TODO: change 64B to 32B
     ax2.set_xticklabels(['16-bank, 64B', '8-bank, 32B', '4-bank, 32B'])
 
     fig.tight_layout()
@@ -152,27 +153,30 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     projection_dict = utils.parse_yaml(args.proj_top_level_file)
-    arch_proj_top_level_names = projection_dict['arch']
+    arch_proj_top_level_group_dicts = projection_dict['arch']
+    for group_dict in arch_proj_top_level_group_dicts:
+        arch_proj_top_level_names = group_dict['name']
+        block = group_dict['block']
 
-    # flatten dtf names
-    dtf_names_hier = []
-    dtf_top_level_names = projection_dict['dataflow']
-    for i in dtf_top_level_names:
-        dtf_names_hier.append(utils.parse_yaml(f'{_TRANCEGEN_DIR}/configs/dataflow/{i}.yaml'))
-    dtf_names = sum(dtf_names_hier, [])
-    # print(dtf_names); exit()
+        # flatten dtf names
+        dtf_names_hier = []
+        dtf_top_level_names = projection_dict['dataflow']
+        for i in dtf_top_level_names:
+            dtf_names_hier.append(utils.parse_yaml(f'{_TRANCEGEN_DIR}/configs/dataflow/{i}.yaml'))
+        dtf_names = sum(dtf_names_hier, [])
+        # print(dtf_names); exit()
 
-    network_names = projection_dict['workloads']
-    output_path = args.output_dir
+        network_names = projection_dict['workloads']
+        output_path = args.output_dir
 
-    for name in arch_proj_top_level_names:
-        arch_proj_top_level_path = f'{_TRANCEGEN_DIR}/configs/arch/'+ name + '.yml'
-        if args.plot_only == False: project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output_path, network_names)
+        for name in arch_proj_top_level_names:
+            arch_proj_top_level_path = f'{_TRANCEGEN_DIR}/configs/arch/'+ name + '.yml'
+            if args.plot_only == False: project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output_path, network_names)
 
-    # parsing for plotting
-    for network_name in network_names:
-        for dtf_name in dtf_names:
-            projection_stats_file = output_path + f'/projection/proj_c_{network_name}_{dtf_name}_percentage.json'
-            plot_percentage(filepath=projection_stats_file, 
-                arch_names=['16_16', '32_32', '64_64', '128_128'], 
-                output_path=output_path)
+        # parsing for plotting
+        for network_name in network_names:
+            for dtf_name in dtf_names:
+                projection_stats_file = output_path + f'/projection/proj_block{block}_{network_name}_{dtf_name}_percentage.json'
+                plot_percentage(filepath=projection_stats_file, 
+                    arch_names=['16_16', '32_32', '64_64', '128_128'], 
+                    output_path=output_path)

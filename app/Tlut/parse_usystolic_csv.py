@@ -18,30 +18,20 @@ lat_key_str = '	SRAM O WR stop'
 def construct_file_path(result_name):
     return f'{_USYS_DIR}/{result_name}/simHwOut/{result_name}{lat_post}'
 
-def construct_names(design, nn_name, conv_only, memorysize='l'):
-    if conv_only==True and memorysize=='l':
-        ind = 0
-    elif conv_only==False and memorysize=='l':
-        ind = 1
-    elif conv_only==True and memorysize=='m':
-        ind = 2
-    elif conv_only==False and memorysize=='m':
-        ind = 3
-    elif conv_only==True and memorysize=='s':
-        ind = 4
-    elif conv_only==False and memorysize=='s':
-        ind = 5
-    
-    if nn_name=='alexnet': postfix='_alex'
-    else: postfix=''
-
-    if design == 'usys':
-        file_path = f'{_TLUT_HOME}/sys_u.yml'
-    elif design == 'bsys':
-        file_path = f'{_TLUT_HOME}/sys_b.yml'
-
-    data = utils.parse_yaml(file_path)
-    arr = [i+postfix for i in data[ind]['results']]
+def construct_names(design, nn_name, conv_only, bank, block, dim_arr=[16, 32, 64, 128]):
+    arr = []
+    for dim in dim_arr:
+        if design == 'usys':
+            if conv_only:
+                str_name = f'proj{dim}_{dim}_04b_ut_016c_{nn_name}_convonly_ddr3_w__spm_sram_{bank}_{block}'
+            else: 
+                str_name = f'proj{dim}_{dim}_04b_ut_016c_{nn_name}_ddr3_w__spm_sram_{bank}_{block}'
+        elif design == 'bsys':
+            if conv_only:
+                str_name = f'proj{dim}_{dim}_04b_bp_001c_{nn_name}_convonly_ddr3_w__spm_sram_{bank}_{block}'
+            else:
+                str_name = f'proj{dim}_{dim}_04b_bp_001c_{nn_name}_ddr3_w__spm_sram_{bank}_{block}'
+        arr.append(str_name)
     return arr
 
 def get_data_across_names(names, keystr, post_processing='sum'):
@@ -57,11 +47,11 @@ def get_data_across_names(names, keystr, post_processing='sum'):
         sys_.append(data)
     return sys_
 
-def get_sys_bw_lat(design, nn_name, conv_only, memorysize):
+def get_sys_bw_lat(design, nn_name, conv_only, bank, block, dim_arr = [16, 32, 64, 128]):
     """
     Returns bw, lat lists.
     """
-    names = construct_names(design, nn_name, conv_only, memorysize)
+    names = construct_names(design, nn_name, conv_only, bank, block, dim_arr)
     byte_ir = get_data_across_names(names, byte_ir_key_str, 'sum')
     byte_fr = get_data_across_names(names, byte_fr_key_str, 'sum')
     byte_or = get_data_across_names(names, byte_or_key_str, 'sum')
@@ -77,10 +67,11 @@ def get_sys_bw_lat(design, nn_name, conv_only, memorysize):
 def main():
     nn_name = 'convnet'
     conv_only = True
-    design = 'usys'
+    design = 'bsys'
     # nn_name = 'alexnet'
-    memorysize = 's'
-    bw, lat = get_sys_bw_lat(design, nn_name, conv_only, memorysize)
+    bank = 16
+    block = 8
+    bw, lat = get_sys_bw_lat(design, nn_name, conv_only, bank, block)
     print(bw, lat)
 
 if __name__ == "__main__":

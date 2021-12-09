@@ -8,6 +8,7 @@ Architecture of configuration taken from CoSA: https://github.com/ucb-bar/cosa
 
 - pyyaml
 - json
+- [uSystolic-Sim](https://github.com/pan185/uSystolic-Sim) (forked from [original repo](https://github.com/diwu1990/uSystolic-Sim))
 
 ## Setup Instruction
 
