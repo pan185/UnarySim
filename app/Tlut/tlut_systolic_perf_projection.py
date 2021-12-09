@@ -277,7 +277,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, bank, block, pl
     font = {'family':'Times New Roman', 'size': 5}
     matplotlib.rc('font', **font)
     my_dpi = 300
-    fig_h = 1
+    fig_h = 1.2
     fig_w = 3.3115
 
     x_axis = tlut_arch_names
@@ -334,7 +334,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, bank, block, pl
     
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     bw_ax.set_xticks(x_idx)
-    bw_ax.set_xticklabels(x_axis, rotation=45)
+    bw_ax.set_xticklabels(x_axis, rotation=10)
     plt.yscale("linear")
     bw_ax.legend(bars, labels, loc="upper center", ncol=ncol, frameon=True)
     
