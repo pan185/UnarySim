@@ -187,10 +187,10 @@ if __name__ == "__main__":
                 projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, True)
                 plot_percentage(filepath=projection_stats_file, 
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
-                    output_path=output_path)
+                    output_path=output_path, block=block)
                 
                 # all layers
                 projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, False)
                 plot_percentage(filepath=projection_stats_file, 
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
-                    output_path=output_path)
+                    output_path=output_path, block=block)
