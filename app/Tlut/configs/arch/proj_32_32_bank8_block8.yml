@@ -1,0 +1,33 @@
+arch:
+  arithmetic:
+    dimI: 32
+    dimW: 32
+    bwI: 4
+    bwW: 8
+    instances: 1
+  storage:
+  - name: OutputBuffer
+    bw: 4
+    base: 2000000
+    entries: 1000000
+    instances: 1
+    layout: NKQP
+    bank: 8
+    block: 8
+  - name: WeightBuffer
+    bw: 8
+    base: 1000000
+    entries: 1000000
+    instances: 1
+    layout: RSCK
+    bank: 8
+    block: 8
+  - name: InputBuffer
+    bw: 4
+    base: 0
+    entries: 1000000
+    instances: 1
+    layout: NCHW
+    bank: 8
+    block: 8
+
