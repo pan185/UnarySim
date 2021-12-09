@@ -130,7 +130,7 @@ def plot_per_layer_data(data1, data2, data3, type_str, nn_layer_names, output_pa
     
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     rt_ax.set_xticks(x_idx)
-    rt_ax.set_xticklabels(x_axis)
+    rt_ax.set_xticklabels(x_axis, rotation=45)
     plt.yscale("linear")
     if type_str == 'lat' or type_str == 'bw':
         rt_ax.legend(bars, labels, loc="lower right", ncol=1, frameon=True)
@@ -207,12 +207,14 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name,
     
     out_path = output_path + '/' + arch_name + '/' + dtf_name + '/'
     stall_rt_cyc_ = np.array(real_rt_cyc_)-np.array(ideal_rt_cyc_)
-    plot_per_layer_data(data1=cg_util_, data2=None, data3=None, type_str='util', 
-        nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
-    plot_per_layer_data(data1=real_bw_input_rd_, data2=real_bw_wght_rd_, data3=real_bw_output_wr_, type_str='bw', 
-        nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
-    plot_per_layer_data(data1=ideal_rt_cyc_, data2=stall_rt_cyc_, data3=None, type_str='lat', 
-        nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
+
+    if conv_only == False: # only gen per layer plots for all layers
+        plot_per_layer_data(data1=cg_util_, data2=None, data3=None, type_str='util', 
+            nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
+        plot_per_layer_data(data1=real_bw_input_rd_, data2=real_bw_wght_rd_, data3=real_bw_output_wr_, type_str='bw', 
+            nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
+        plot_per_layer_data(data1=ideal_rt_cyc_, data2=stall_rt_cyc_, data3=None, type_str='lat', 
+            nn_layer_names=nn_layer_names, output_path=out_path, nn_name=nn_name)
 
     # taking average
     cg_util /= len(nn_layer_names)
@@ -298,7 +300,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, bank, block, pl
     
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     rt_ax.set_xticks(x_idx)
-    rt_ax.set_xticklabels(x_axis)
+    rt_ax.set_xticklabels(x_axis, rotation=45)
     plt.yscale("linear")
     rt_ax.legend(bars, labels, loc="upper center", ncol=ncol, frameon=True)
     
@@ -332,7 +334,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, bank, block, pl
     
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     bw_ax.set_xticks(x_idx)
-    bw_ax.set_xticklabels(x_axis)
+    bw_ax.set_xticklabels(x_axis, rotation=45)
     plt.yscale("linear")
     bw_ax.legend(bars, labels, loc="upper center", ncol=ncol, frameon=True)
     

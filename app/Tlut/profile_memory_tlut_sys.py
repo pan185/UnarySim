@@ -36,8 +36,8 @@ def set_no_update(output_path, arch_name, dtf_name, network_name):
     # if first arch and first dataflow exist, no update
     path = output_path + f'/{arch_name}/{dtf_name}/{network_name}'
     p = Path(path)
-    print(f'checking {path}!')
     if p.exists() and p.is_dir():
+        print(f'checking {path} exits!')
         return True
     else: return False
 
@@ -49,9 +49,10 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
     for dtf in dtf_names:
         for network_name in network_names:
             for arch in arch_names:
-                print(utils.bcolors.OKBLUE +f'checking {dtf} dataflow, {arch} arch, {network_name} network' + utils.bcolors.ENDC)
+                print(utils.bcolors.WARNING +f'checking {dtf} dataflow, {arch} arch, {network_name} network' + utils.bcolors.ENDC)
                 no_update = no_update and set_no_update(output_path, arch, dtf, network_name)
-    print(utils.bcolors.WARNING + f'Skipping update!' + utils.bcolors.ENDC)
+    if no_update: print(utils.bcolors.WARNING + f'Skipping update!' + utils.bcolors.ENDC)
+    else: print(utils.bcolors.FAIL + f'Needs updating. Regenerating all...' + utils.bcolors.ENDC)
 
     for dtf_top_level_name in dtf_top_level_names:
         for network_name in network_names:
@@ -69,6 +70,7 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
 
             # version2: conv only
             in_arr.append('--conv_only')
+            in_arr.append('--no_update') # This absolutely does not need update
             p = subprocess.Popen(in_arr)
             output, error = p.communicate()
             if output != None: print(output)
