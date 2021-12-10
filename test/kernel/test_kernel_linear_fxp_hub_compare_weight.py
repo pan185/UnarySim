@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import time
 import math
 import numpy as np
+from UnarySim.app.Tlut import utils
 
 # %%
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -135,6 +136,11 @@ my_dpi = 300
 fig_h = 1
 fig_w = 3.3115
 
+tlut_color = utils.cor.tlut_blue
+fp_color = utils.cor.tlut_yellow
+fxp_color = utils.cor.tlut_pink
+hub_color = utils.cor.tlut_green
+
 # construct some data like what you have:
 x = np.array([i for i in range(len(ufc_err_mean_list))])
 means1 = np.array(ufc_err_mean_list)
@@ -162,24 +168,24 @@ x_label = ['6-32', '7-64', '8-128', '9-256', '10-512', '11-1024', '12-2048']
 width = 0.20
 fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-ax.plot(x, means1, "-o", label="uSystolic", color="#7A81FF", ms=4)
-ax.fill_between(x, means1-stds1, means1+stds1, alpha=0.3, color="#7A81FF", edgecolor=None)
+ax.plot(x, means1, "-o", label="uSystolic", color=hub_color, ms=4)
+# ax.fill_between(x, means1-stds1, means1+stds1, alpha=0.3, color=hub_color, edgecolor=None)
 
-ax.plot(x, means_, "-o", label="Temporal-LUT", color="#6ACCBC", ms=4)
-ax.fill_between(x, means_-stds_, means_+stds_, alpha=0.3, color="#6ACCBC", edgecolor=None)
+ax.plot(x, means_, "-o", label="Temporal-LUT", color=tlut_color, ms=4)
+# ax.fill_between(x, means_-stds_, means_+stds_, alpha=0.3, color=tlut_color, edgecolor=None)
 
 # ax.plot(x, means2, "-s", label="FXP-o-res", color="#FF7F7F", ms=4)
 # ax.fill_between(x, means2-stds2, means2+stds2, alpha=0.3, color="#FF7F7F", edgecolor=None)
 
-ax.plot(x, means3, "-^", label="FXP", color="#D783FF", ms=4)
-ax.fill_between(x, means3-stds3, means3+stds3, alpha=0.3, color="#D783FF", edgecolor=None)
+ax.plot(x, means3, "-^", label="FXP", color=fxp_color, ms=4)
+# ax.fill_between(x, means3-stds3, means3+stds3, alpha=0.3, color=fxp_color, edgecolor=None)
 
 ax.set_xticks(x)
 ax.set_xticklabels(x_label)
 ax.set_yscale('linear')
-ax.set_yticks([0, 0.005, 0.01, 0.015])
-ax.set_yticklabels(["0.000", "0.005", "0.010", "0.015"])
-ax. set_ylim(0, 0.015)
+ax.set_yticks([0, 0.002, 0.004, 0.006, 0.008])
+ax.set_yticklabels(["0.000", "0.002", "0.004", "0.006", "0.008"])
+ax. set_ylim(0, 0.008)
 ax.legend(loc="upper right", ncol=3, frameon=False)
 ax.set_ylabel("Absolute Error")
 
@@ -252,23 +258,23 @@ x_label = ['6-32', '7-64', '8-128', '9-256', '10-512', '11-1024', '12-2048']
 width = 0.20
 fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-ax.plot(x, means1, "-o", label="uSystolic", color="#7A81FF", ms=4)
-ax.fill_between(x, means1-stds1, means1+stds1, alpha=0.3, color="#7A81FF", edgecolor=None)
+ax.plot(x, means1, "-o", label="uSystolic", color=hub_color ,ms=4)
+# ax.fill_between(x, means1-stds1, means1+stds1, alpha=0.3, color=hub_color, edgecolor=None)
 
-ax.plot(x, means_, "-o", label="Temporal-LUT", color="#6ACCBC", ms=4)
-ax.fill_between(x, means_-stds_, means_+stds_, alpha=0.3, color="#6ACCBC", edgecolor=None)
+ax.plot(x, means_, "-o", label="Temporal-LUT", color=tlut_color, ms=4)
+# ax.fill_between(x, means_-stds_, means_+stds_, alpha=0.3, color=tlut_color, edgecolor=None)
 
 # ax.plot(x, means2, "-s", label="FXP-o-res", color="#FF7F7F", ms=4)
 # ax.fill_between(x, means2-stds2, means2+stds2, alpha=0.3, color="#FF7F7F", edgecolor=None)
 
-ax.plot(x, means3, "-^", label="FXP", color="#D783FF", ms=4)
-ax.fill_between(x, means3-stds3, means3+stds3, alpha=0.3, color="#D783FF", edgecolor=None)
+ax.plot(x, means3, "-^", label="FXP", color=fxp_color, ms=4)
+# ax.fill_between(x, means3-stds3, means3+stds3, alpha=0.3, color=fxp_color, edgecolor=None)
 
 ax.set_xticks(x)
 ax.set_xticklabels(x_label)
 ax.set_yscale('linear')
-ax.set_yticks([0, 0.4, 0.8])
-ax.set_yticklabels(["0.00", "0.40", "0.80"])
+ax.set_yticks([0, 0.2, 0.4])
+ax.set_yticklabels(["0.00", "0.2", "0.4"])
 # ax.legend(loc="upper right", ncol=3, frameon=False)
 
 fig.tight_layout()

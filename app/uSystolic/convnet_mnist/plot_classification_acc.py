@@ -4,6 +4,7 @@ import os.path
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.font_manager
+from UnarySim.app.Tlut import utils
 
 class bcolors:
     """
@@ -90,11 +91,10 @@ def plot_fig(list_,str_in):
     fig_h = 1.1
     fig_w = 3.3115
 
-    # TODO: Change color
-    tlut_color = "#6ACCBC"
-    fp_color = "#FF7F7F"
-    fxp_color = "#D783FF"
-    hub_color = '#7A81FF'
+    tlut_color = utils.cor.tlut_blue
+    fp_color = utils.cor.tlut_yellow
+    fxp_color = utils.cor.tlut_pink
+    hub_color = utils.cor.tlut_green
 
     width = 0.20
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))

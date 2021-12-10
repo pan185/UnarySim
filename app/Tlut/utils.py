@@ -53,6 +53,8 @@ class cor:
     tlut_pink = '#F5CCCA'
     tlut_nude = '#E8B6AD'
     tlut_blue = '#4482F1'
+    tlut_green = '#C2D076'
+    tlut_yellow = '#FDBD60'
 
     # accuracy color plots
     tlut_color = "#6ACCBC"
