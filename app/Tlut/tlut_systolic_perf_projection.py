@@ -287,7 +287,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, bank, block, pl
     fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
     
     ncol = 3
-    rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_mint, ms=4, label='Unary systolic')
+    rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_green, ms=4, label='Unary systolic')
     rt_ax.plot(x_idx, bsys_lat, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
     rt_ax.plot(x_idx, tlut_lat, '-^', color=cor.tlut_blue, ms=4, label='Temporal_LUT')
     if plot_rect: 
@@ -323,7 +323,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, bank, block, pl
     # bw line plot
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
     
-    bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_mint, ms=4, label='Unary systolic')
+    bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_green, ms=4, label='Unary systolic')
     bw_ax.plot(x_idx, bsys_bw, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
     bw_ax.plot(x_idx, tlut_bw, '-^', color=cor.tlut_blue, ms=4, label='Temporal_LUT')
     if plot_rect: bw_ax.plot(x_idx, rect_bw, '-^', color=cor.tlut_pink, ms=4, label='Temporal_LUT (rectangular)')

@@ -170,27 +170,42 @@ def gen_network_stats(arch_name, nn_layer_names, dtf_name, output_path, nn_name)
         ideal_rt_cyc_.append(data['ideal']['runtime']['layer_cycle'])
         ideal_layer_sec = data['ideal']['runtime']['layer_sec']
         ideal_layer_thrpt = data['ideal']['runtime']['layer_throughput']
+        ideal_cur_sec = ideal_rt_sec
         ideal_rt_sec += ideal_layer_sec
         ideal_total_data_so_far = ideal_rt_sec * ideal_rt_thrpt
         ideal_rt_thrpt = float(ideal_total_data_so_far + ideal_layer_sec * ideal_layer_thrpt) / ideal_rt_sec
-        ideal_bw_input_rd += data['ideal']['bandwidth']['input_rd']
-        ideal_bw_wght_rd += data['ideal']['bandwidth']['weight_rd']
-        ideal_bw_output_wr += data['ideal']['bandwidth']['output_wr']
-        ideal_bw_total += data['ideal']['bandwidth']['total']
+        ideal_input_rd_data = ideal_bw_input_rd * ideal_cur_sec
+        ideal_bw_input_rd = (ideal_input_rd_data + data['ideal']['bandwidth']['input_rd'] * ideal_layer_sec) / ideal_rt_sec
+        ideal_wght_rd_data = ideal_bw_wght_rd * ideal_cur_sec
+        ideal_bw_wght_rd = (ideal_wght_rd_data + data['ideal']['bandwidth']['weight_rd'] * ideal_layer_sec) / ideal_rt_sec
+        ideal_output_wr_data = ideal_bw_output_wr * ideal_cur_sec
+        ideal_bw_output_wr = (ideal_output_wr_data + data['ideal']['bandwidth']['output_wr'] * ideal_layer_sec) / ideal_rt_sec
+        total_data = ideal_bw_total * ideal_cur_sec
+        ideal_bw_total = (total_data + data['ideal']['bandwidth']['total'] * ideal_layer_sec) / ideal_rt_sec
         real_rt_cyc += data['real']['runtime']['layer_cycle']
         real_rt_cyc_.append(data['real']['runtime']['layer_cycle'])
         real_layer_sec = data['real']['runtime']['layer_sec']
         real_layer_thrpt = data['real']['runtime']['layer_throughput']
+        real_cur_sec = real_rt_sec
         real_rt_sec += real_layer_sec
         real_total_data_so_far = real_rt_sec * real_rt_thrpt
         real_rt_thrpt = float(real_total_data_so_far + real_layer_sec * real_layer_thrpt) / real_rt_sec
-        real_bw_input_rd += data['real']['bandwidth']['input_rd']
+
+        real_input_rd_data = real_bw_input_rd * real_cur_sec
+        real_bw_input_rd = (real_input_rd_data + data['real']['bandwidth']['input_rd'] * real_layer_sec) / real_rt_sec
+        # real_bw_input_rd += data['real']['bandwidth']['input_rd']
         real_bw_input_rd_.append(data['real']['bandwidth']['input_rd'])
-        real_bw_wght_rd += data['real']['bandwidth']['weight_rd']
+        real_wght_rd_data = real_bw_wght_rd * real_cur_sec
+        real_bw_wght_rd = (real_wght_rd_data + data['real']['bandwidth']['weight_rd'] * real_layer_sec) / real_rt_sec
+        # real_bw_wght_rd += data['real']['bandwidth']['weight_rd']
         real_bw_wght_rd_.append(data['real']['bandwidth']['weight_rd'])
-        real_bw_output_wr += data['real']['bandwidth']['output_wr']
+        real_output_wr_data = real_bw_output_wr * real_cur_sec
+        real_bw_output_wr = (real_output_wr_data + data['real']['bandwidth']['output_wr'] * real_layer_sec) / real_rt_sec
+        # real_bw_output_wr += data['real']['bandwidth']['output_wr']
         real_bw_output_wr_.append(data['real']['bandwidth']['output_wr'])
-        real_bw_total += data['real']['bandwidth']['total']
+        real_total_data = real_bw_total * real_cur_sec
+        real_bw_total = (real_total_data + data['real']['bandwidth']['total'] * real_layer_sec) / real_rt_sec
+        # real_bw_total += data['real']['bandwidth']['total']
         dyn_ireg += data['dynamic_cycle']['ireg']
         dyn_wreg += data['dynamic_cycle']['wreg']
         dyn_mac += data['dynamic_cycle']['mac']
@@ -340,18 +355,18 @@ def compare_arch_set(arch_set, arch_names, nn_name, dtf_name, out_dir):
     
     print("rt_ax ylim: ", rt_ax.get_ylim())
 
-    if arch_set == 'archs':
-        rt_ax.set_ylim((0, 3700000))
-        rt_ax.set_yticks((0, 1000000, 2000000, 3000000))
-    elif 'w1' in arch_set:
-        rt_ax.set_ylim((0, 31000000))
-        rt_ax.set_yticks((0, 10000000, 20000000, 30000000))
-    elif 'w2' in arch_set:
-        rt_ax.set_ylim((0, 13000000))
-        rt_ax.set_yticks((0, 5000000, 10000000))
-    elif 'w4' in arch_set:
-        rt_ax.set_ylim((0,   6200000))
-        rt_ax.set_yticks((0, 2000000, 4000000, 6000000))
+    # if arch_set == 'archs':
+    #     rt_ax.set_ylim((0, 3700000))
+    #     rt_ax.set_yticks((0, 1000000, 2000000, 3000000))
+    # elif 'w1' in arch_set:
+    #     rt_ax.set_ylim((0, 31000000))
+    #     rt_ax.set_yticks((0, 10000000, 20000000, 30000000))
+    # elif 'w2' in arch_set:
+    #     rt_ax.set_ylim((0, 13000000))
+    #     rt_ax.set_yticks((0, 5000000, 10000000))
+    # elif 'w4' in arch_set:
+    #     rt_ax.set_ylim((0,   6200000))
+    #     rt_ax.set_yticks((0, 2000000, 4000000, 6000000))
     
 
     fig.tight_layout()
@@ -376,18 +391,18 @@ def compare_arch_set(arch_set, arch_names, nn_name, dtf_name, out_dir):
     
     print("bw_ax ylim: ", bw_ax.get_ylim())
 
-    if arch_set == 'archs':
-        bw_ax.set_ylim((0, 50))
-        bw_ax.set_yticks((0, 10, 20, 30, 40, 50))
-    if 'w1' in arch_set:
-        bw_ax.set_ylim((0, 3.1))
-        bw_ax.set_yticks((0, 1, 2, 3))
-    elif 'w2' in arch_set:
-        bw_ax.set_ylim((0, 3.4))
-        bw_ax.set_yticks((0, 1, 2, 3))
-    elif 'w4' in arch_set:
-        bw_ax.set_ylim((0, 4))
-        bw_ax.set_yticks((0, 1, 2, 3, 4))
+    # if arch_set == 'archs':
+    #     bw_ax.set_ylim((0, 50))
+    #     bw_ax.set_yticks((0, 10, 20, 30, 40, 50))
+    # if 'w1' in arch_set:
+    #     bw_ax.set_ylim((0, 3.1))
+    #     bw_ax.set_yticks((0, 1, 2, 3))
+    # elif 'w2' in arch_set:
+    #     bw_ax.set_ylim((0, 3.4))
+    #     bw_ax.set_yticks((0, 1, 2, 3))
+    # elif 'w4' in arch_set:
+    #     bw_ax.set_ylim((0, 4))
+    #     bw_ax.set_yticks((0, 1, 2, 3, 4))
     
 
     fig.tight_layout()
@@ -399,7 +414,7 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     font = {'family':'Times New Roman', 'size': 6}
     matplotlib.rc('font', **font)
     my_dpi = 300
-    fig_h = 1.5
+    fig_h = 1.2
     fig_w = 3.3115
 
     x_axis = arch_set_names_flat
@@ -415,9 +430,9 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ireg0 = [i[0] for i in i_bw_]
     wreg0 = [w[0] for w in w_bw_]
-    rects1 = ax.bar(x - width - width/2, ireg0, width, bottom=None, alpha=0.99, color=cor.tlut_pink, hatch=None, label='i16 ireg')
-    rects1_2 = ax.bar(x - width - width/2, wreg0, width, bottom=ireg0, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i16 wreg')
-    rects1_3 = ax.bar(x - width - width/2, [o[0] for o in o_bw_], width, bottom=np.array(ireg0) + np.array(wreg0), alpha=0.99, color=cor.tlut_blue, hatch=None, label='i16 oreg')
+    rects1 = ax.bar(x - width - width/2, ireg0, width, bottom=None, alpha=0.99, color=cor.tlut_pink, hatch=None, label='ireg')
+    rects1_2 = ax.bar(x - width - width/2, wreg0, width, bottom=ireg0, alpha=0.99, color=cor.tlut_nude, hatch=None, label='wreg')
+    rects1_3 = ax.bar(x - width - width/2, [o[0] for o in o_bw_], width, bottom=np.array(ireg0) + np.array(wreg0), alpha=0.99, color=cor.tlut_blue, hatch=None, label='oreg')
     ireg1 = [i[1] for i in i_bw_]
     wreg1 = [w[1] for w in w_bw_]
     rects2 = ax.bar(x - width/2, ireg1, width, bottom=None, alpha=0.99, color=cor.tlut_pink, hatch=None, label='i32 ireg')
@@ -445,18 +460,21 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     ax.minorticks_off()
 
     bars, labels = ax.get_legend_handles_labels()
+    bars = bars[0:3]
+    labels = labels[0:3]
     
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     ax.set_xticks(x_idx)
     ax.set_xticklabels(x_axis)
     plt.yscale("linear")
-    ax.legend(bars, labels, loc="lower center", bbox_to_anchor=(0.5, -1.45), ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
-    fig.subplots_adjust(bottom=0.45)
+    # ax.legend(bars, labels, loc="lower center", bbox_to_anchor=(0.5, -1.45), ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
+    ax.legend(bars, labels, loc="upper center", ncol=3, frameon=True)
+    # fig.subplots_adjust(bottom=0.45)
 
     print("ax ylim: ", ax.get_ylim())
 
-    ax.set_ylim((0, 7))
-    ax.set_yticks((0, 2, 4, 6))
+    # ax.set_ylim((0, 7))
+    # ax.set_yticks((0, 2, 4, 6))
 
     fig.tight_layout()
     plt.savefig(output_path + f'/bw.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
@@ -464,8 +482,8 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     # bw plots
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ideal0 = [ideal[0] for ideal in ideal_]
-    rects1 = ax.bar(x - width - width/2, ideal0, width, bottom=None, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i16 ideal')
-    rects1_2 = ax.bar(x - width - width/2, [stall[0] for stall in stall_], width, bottom=ideal0, alpha=0.99, color=cor.tlut_blue, hatch=None, label='i16 stall')
+    rects1 = ax.bar(x - width - width/2, ideal0, width, bottom=None, alpha=0.99, color=cor.tlut_nude, hatch=None, label='ideal')
+    rects1_2 = ax.bar(x - width - width/2, [stall[0] for stall in stall_], width, bottom=ideal0, alpha=0.99, color=cor.tlut_blue, hatch=None, label='stall')
     ideal1 = [ideal[1] for ideal in ideal_]
     rects2 = ax.bar(x - width/2, ideal1, width, bottom=None, alpha=0.99, color=cor.tlut_nude, hatch=None, label='i32 ideal')
     rects2_2 = ax.bar(x - width/2, [stall[1] for stall in stall_], width, bottom=ideal1, alpha=0.99, color=cor.tlut_blue, hatch=None, label='i32 stall')
@@ -487,6 +505,9 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     ax.minorticks_off()
 
     bars, labels = ax.get_legend_handles_labels()
+    bars = bars[0:2]
+    labels = labels[0:2]
+    
     
     plt.xlim(x_idx[0]-0.5, x_idx[-1]+0.5)
     ax.set_xticks(x_idx)
@@ -497,12 +518,13 @@ def compare_all_arch_sets(arch_set_names_flat, arch_names_flat, ideal_, stall_, 
     # print(x_axis_real)
 
     plt.yscale("log")
-    ax.legend(bars, labels, loc="lower center", bbox_to_anchor=(0.5, -0.9), ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
-    fig.subplots_adjust(bottom=0.32)
+    ax.legend(bars, labels, loc='upper center', ncol=2, frameon=True)
+    # ax.legend(bars, labels, loc="lower center", bbox_to_anchor=(0.5, -0.4), ncol=int(len(arch_names_flat)/len(arch_set_names_flat)), frameon=True)
+    fig.subplots_adjust(bottom=0.29)
     print("latency ax ylim: ", ax.get_ylim())
 
-    ax.set_ylim((1000000, 15000000))
-    ax.set_yticks((1000000, 10000000, 100000000))
+    # ax.set_ylim((1000000, 15000000))
+    # ax.set_yticks((1000000, 10000000, 100000000))
 
     fig.tight_layout()
     plt.savefig(output_path + f'/latency.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)

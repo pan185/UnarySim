@@ -118,7 +118,7 @@ def plot_percentage(filepath, arch_names, output_path, block):
     fig, rt_ax = plt.subplots(figsize=(fig_w, fig_h))
     
     ncol = 2
-    rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_blue, ms=4, label='Unary systolic')
+    rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_green, ms=4, label='Unary systolic')
     rt_ax.plot(x_idx, bsys_lat, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
     rt_ax.axhline(y=1, color='k', linestyle='--',linewidth=0.5)
     
@@ -158,7 +158,7 @@ def plot_percentage(filepath, arch_names, output_path, block):
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
     
     ncol = 2
-    bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_blue, ms=4, label='Unary systolic')
+    bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_green, ms=4, label='Unary systolic')
     bw_ax.plot(x_idx, bsys_bw, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
     bw_ax.axhline(y=1, color='k', linestyle='--',linewidth=0.5)
     
