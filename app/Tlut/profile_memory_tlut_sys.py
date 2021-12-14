@@ -31,6 +31,11 @@ def construct_argparser():
                         help='Plot only',
                         default=False,
                         )
+    parser.add_argument('--include_et',
+                        action='store_true',
+                        help='Include et result as well',
+                        default=False,
+                        )
 
     return parser
 
@@ -43,21 +48,28 @@ def set_no_update(output_path, arch_name, dtf_name, network_name):
         return True
     else: return False
 
-def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output_path, network_names):
+def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output_path, network_names, include_et=False):
     arch_names = utils.parse_yaml(arch_proj_top_level_path)
     arch_proj_top_level_name = arch_proj_top_level_path.split('arch/')[1].split('.yml')[0]
     no_update = True
     
+    nn_to_update = []
     for dtf in dtf_names:
+        # TODO: revisit
+        if include_et: network_names.append('convnet_et')
         for network_name in network_names:
             for arch in arch_names:
                 print(utils.bcolors.WARNING +f'checking {dtf} dataflow, {arch} arch, {network_name} network' + utils.bcolors.ENDC)
                 no_update = no_update and set_no_update(output_path, arch, dtf, network_name)
-    if no_update: print(utils.bcolors.WARNING + f'Skipping update!' + utils.bcolors.ENDC)
-    else: print(utils.bcolors.FAIL + f'Needs updating. Regenerating all...' + utils.bcolors.ENDC)
+            if no_update == False: 
+                nn_to_update.append(network_name)
+                no_update = True
+    if len(nn_to_update)==0: print(utils.bcolors.WARNING + f'Skipping update!' + utils.bcolors.ENDC)
+    else: print(utils.bcolors.FAIL + f'Needs updating. Regenerating nn: {nn_to_update}' + utils.bcolors.ENDC)
 
     for dtf_top_level_name in dtf_top_level_names:
-        for network_name in network_names:
+        for network_name in nn_to_update:
+            # ------- max length version -----------
             # version1: all layers
             in_arr = ['python3', f'{_TRANCEGEN_DIR}/tlut_systolic_perf_projection.py', 
                 '-nn', f'{_TRANCEGEN_DIR}/configs/workloads/{network_name}_graph/layers.yaml', 
@@ -76,8 +88,29 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
             p = subprocess.Popen(in_arr)
             output, error = p.communicate()
             if output != None: print(output)
+            
+            if include_et:
+                # ------- max length version -----------
+                # version1: all layers
+                in_arr = ['python3', f'{_TRANCEGEN_DIR}/tlut_systolic_perf_projection.py', 
+                    '-nn', f'{_TRANCEGEN_DIR}/configs/workloads/{network_name}_et_graph/layers.yaml', 
+                    '-ap', f'{_TRANCEGEN_DIR}/configs/arch/'+ arch_proj_top_level_name + '.yml',
+                    '-dtfs', f'{_TRANCEGEN_DIR}/configs/dataflow/'+dtf_top_level_name + '.yaml', 
+                    '-o', output_path]
+                if no_update: in_arr.append('--no_update')
+                # print(in_arr); exit()
+                p = subprocess.Popen(in_arr)
+                output, error = p.communicate()
+                if output != None: print(output)
 
-def plot_percentage(filepath, arch_names, output_path, block, et_filepath=None):
+                # version2: conv only
+                in_arr.append('--conv_only')
+                in_arr.append('--no_update') # This absolutely does not need update
+                p = subprocess.Popen(in_arr)
+                output, error = p.communicate()
+                if output != None: print(output)
+
+def plot_percentage(filepath, arch_names, output_path, block, include_et, et_filepath=None):
     # parsing tlut max length run stat file
     data = utils.parse_json(filepath)
     bsys_m_32_lat = data[f'8_{block}']['bsys']['lat']
@@ -104,7 +137,7 @@ def plot_percentage(filepath, arch_names, output_path, block, et_filepath=None):
     bsys_bw = sum(bsys_bw, [])
 
     # parsing tlut et run stat file
-    if et_filepath != None:
+    if et_filepath != None and include_et:
         et_data = utils.parse_json(et_filepath)
         et_bsys_m_32_lat = et_data[f'8_{block}']['bsys']['lat']
         et_bsys_m_32_bw = et_data[f'8_{block}']['bsys']['bw']
@@ -146,7 +179,7 @@ def plot_percentage(filepath, arch_names, output_path, block, et_filepath=None):
     
     ncol = 2
     rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_green, ms=4, label='Unary systolic')
-    if et_filepath != None: 
+    if et_filepath != None and include_et: 
         rt_ax.plot(x_idx, et_usys_lat, '--s', color=cor.tlut_green, ms=4)
         rt_ax.plot(x_idx, et_bsys_lat, '--o', color=cor.tlut_nude, ms=4)
     rt_ax.plot(x_idx, bsys_lat, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
@@ -190,7 +223,7 @@ def plot_percentage(filepath, arch_names, output_path, block, et_filepath=None):
     ncol = 2
     bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_green, ms=4, label='Unary systolic')
     bw_ax.plot(x_idx, bsys_bw, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
-    if et_filepath != None: 
+    if et_filepath != None and include_et: 
         bw_ax.plot(x_idx, et_usys_bw, '--s', color=cor.tlut_green, ms=4)
         bw_ax.plot(x_idx, et_bsys_bw, '--o', color=cor.tlut_nude, ms=4)
     bw_ax.axhline(y=1, color='k', linestyle='--',linewidth=0.5)
@@ -254,7 +287,7 @@ if __name__ == "__main__":
         pbar = tqdm(arch_proj_top_level_names)
         for name in pbar:
             arch_proj_top_level_path = f'{_TRANCEGEN_DIR}/configs/arch/'+ name + '.yml'
-            if args.plot_only == False: project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output_path, network_names)
+            if args.plot_only == False: project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output_path, network_names, args.include_et)
             pbar.set_description(f'Projecting {name}')
 
         # parsing for plotting
@@ -264,10 +297,12 @@ if __name__ == "__main__":
                 projection_stats_file, et_projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, True)
                 plot_percentage(filepath=projection_stats_file, et_filepath=et_projection_stats_file,
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
+                    include_et=args.include_et,
                     output_path=output_path, block=block)
                 
                 # all layers
                 projection_stats_file, et_projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, False)
                 plot_percentage(filepath=projection_stats_file, et_filepath=et_projection_stats_file,
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
+                    include_et=args.include_et,
                     output_path=output_path, block=block)
