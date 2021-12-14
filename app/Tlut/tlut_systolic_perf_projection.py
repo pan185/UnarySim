@@ -401,7 +401,7 @@ if __name__ == "__main__":
     if not os.path.exists(output_path + f'/projection'):
         os.makedirs(output_path + f'/projection')
 
-    projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, conv_only)
+    projection_stats_file, _ = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, conv_only)
     
     print(utils.bcolors.HEADER + f'********** Appending stats to {projection_stats_file}**********' + utils.bcolors.ENDC)
     
