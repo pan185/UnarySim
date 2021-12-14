@@ -53,7 +53,7 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
     arch_proj_top_level_name = arch_proj_top_level_path.split('arch/')[1].split('.yml')[0]
     no_update = True
     
-    nn_to_update = []
+    nn_to_update = set()
     for dtf in dtf_names:
         # TODO: revisit
         if include_et: network_names.append('convnet_et')
@@ -62,7 +62,7 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
                 print(utils.bcolors.WARNING +f'checking {dtf} dataflow, {arch} arch, {network_name} network' + utils.bcolors.ENDC)
                 no_update = no_update and set_no_update(output_path, arch, dtf, network_name)
             if no_update == False: 
-                nn_to_update.append(network_name)
+                nn_to_update.add(network_name)
                 no_update = True
     if len(nn_to_update)==0: print(utils.bcolors.WARNING + f'Skipping update!' + utils.bcolors.ENDC)
     else: print(utils.bcolors.FAIL + f'Needs updating. Regenerating nn: {nn_to_update}' + utils.bcolors.ENDC)
