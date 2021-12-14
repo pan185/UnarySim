@@ -18,6 +18,5 @@ arch:
 workloads:
   - convnet
   - alexnet
-  - convnet_et
 dataflow:
   - dtfs
