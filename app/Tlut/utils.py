@@ -12,6 +12,7 @@ import sys
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.NOTSET)  # capture everything
 logger.disabled = True
+from os.path import exists
 
 # csv parsing
 import csv
@@ -233,6 +234,12 @@ def get_all_values_for_given_key(csvFile, key_str, rtype='float'):
 def get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, conv_only):
     if conv_only:
         projection_stats_file = output_path + f'/projection/proj_block{block}_{network_name}_{dtf_name}_norm_convonly.json'
+        et_projection_stats_file = output_path + f'/projection/proj_block{block}_{network_name}_et_{dtf_name}_norm_convonly.json'
     else:
         projection_stats_file = output_path + f'/projection/proj_block{block}_{network_name}_{dtf_name}_norm.json'
-    return projection_stats_file
+        et_projection_stats_file = output_path + f'/projection/proj_block{block}_{network_name}_et_{dtf_name}_norm.json'
+    
+    # Check if et version of network stats exists
+    et_file_exists = exists(et_projection_stats_file)
+    if et_file_exists: return projection_stats_file, et_file_exists
+    return projection_stats_file, None

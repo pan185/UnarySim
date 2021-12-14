@@ -77,7 +77,8 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
             output, error = p.communicate()
             if output != None: print(output)
 
-def plot_percentage(filepath, arch_names, output_path, block):
+def plot_percentage(filepath, arch_names, output_path, block, et_filepath=None):
+    # parsing tlut max length run stat file
     data = utils.parse_json(filepath)
     bsys_m_32_lat = data[f'8_{block}']['bsys']['lat']
     bsys_m_32_bw = data[f'8_{block}']['bsys']['bw']
@@ -102,6 +103,32 @@ def plot_percentage(filepath, arch_names, output_path, block):
     bsys_bw = [bsys_l_32_bw, [float('NaN')], bsys_m_32_bw, [float('NaN')], bsys_s_32_bw, [float('NaN')]]
     bsys_bw = sum(bsys_bw, [])
 
+    # parsing tlut et run stat file
+    if et_filepath != None:
+        et_data = utils.parse_json(et_filepath)
+        et_bsys_m_32_lat = et_data[f'8_{block}']['bsys']['lat']
+        et_bsys_m_32_bw = et_data[f'8_{block}']['bsys']['bw']
+        et_bsys_s_32_lat = et_data[f'4_{block}']['bsys']['lat']
+        et_bsys_s_32_bw = et_data[f'4_{block}']['bsys']['bw']
+        et_bsys_l_32_lat = et_data[f'16_{block}']['bsys']['lat']
+        et_bsys_l_32_bw = et_data[f'16_{block}']['bsys']['bw']
+
+        et_usys_m_32_lat = et_data[f'8_{block}']['usys']['lat']
+        et_usys_m_32_bw = et_data[f'8_{block}']['usys']['bw']
+        et_usys_s_32_lat = et_data[f'4_{block}']['usys']['lat']
+        et_usys_s_32_bw = et_data[f'4_{block}']['usys']['bw']
+        et_usys_l_32_lat = et_data[f'16_{block}']['usys']['lat']
+        et_usys_l_32_bw = et_data[f'16_{block}']['usys']['bw']
+
+        et_usys_lat = [et_usys_l_32_lat, [float('NaN')], et_usys_m_32_lat, [float('NaN')], et_usys_s_32_lat, [float('NaN')]]
+        et_usys_lat = sum(et_usys_lat, [])
+        et_usys_bw = [et_usys_l_32_bw, [float('NaN')], et_usys_m_32_bw, [float('NaN')], et_usys_s_32_bw, [float('NaN')]]
+        et_usys_bw = sum(et_usys_bw, [])
+        et_bsys_lat = [et_bsys_l_32_lat, [float('NaN')], et_bsys_m_32_lat, [float('NaN')], et_bsys_s_32_lat, [float('NaN')]]
+        et_bsys_lat = sum(bsys_lat, [])
+        et_bsys_bw = [et_bsys_l_32_bw, [float('NaN')], et_bsys_m_32_bw, [float('NaN')], et_bsys_s_32_bw, [float('NaN')]]
+        et_bsys_bw = sum(et_bsys_bw, [])
+
     # TODO: Make pretty
     font = {'family':'Times New Roman', 'size': 5}
     matplotlib.rc('font', **font)
@@ -119,6 +146,9 @@ def plot_percentage(filepath, arch_names, output_path, block):
     
     ncol = 2
     rt_ax.plot(x_idx, usys_lat, '-s', color=cor.tlut_green, ms=4, label='Unary systolic')
+    if et_filepath != None: 
+        rt_ax.plot(x_idx, et_usys_lat, '--s', color=cor.tlut_green, ms=4)
+        rt_ax.plot(x_idx, et_bsys_lat, '--o', color=cor.tlut_nude, ms=4)
     rt_ax.plot(x_idx, bsys_lat, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
     rt_ax.axhline(y=1, color='k', linestyle='--',linewidth=0.5)
     
@@ -160,6 +190,9 @@ def plot_percentage(filepath, arch_names, output_path, block):
     ncol = 2
     bw_ax.plot(x_idx, usys_bw, '-s', color=cor.tlut_green, ms=4, label='Unary systolic')
     bw_ax.plot(x_idx, bsys_bw, '-o', color=cor.tlut_nude, ms=4, label='Binary systolic')
+    if et_filepath != None: 
+        bw_ax.plot(x_idx, et_usys_bw, '--s', color=cor.tlut_green, ms=4)
+        bw_ax.plot(x_idx, et_bsys_bw, '--o', color=cor.tlut_nude, ms=4)
     bw_ax.axhline(y=1, color='k', linestyle='--',linewidth=0.5)
     
     bw_ax.set_ylabel('Normalized bandwidth')
@@ -228,13 +261,13 @@ if __name__ == "__main__":
         for network_name in network_names:
             for dtf_name in dtf_names:
                 # conv only
-                projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, True)
-                plot_percentage(filepath=projection_stats_file, 
+                projection_stats_file, et_projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, True)
+                plot_percentage(filepath=projection_stats_file, et_filepath=et_projection_stats_file,
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
                     output_path=output_path, block=block)
                 
                 # all layers
-                projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, False)
-                plot_percentage(filepath=projection_stats_file, 
+                projection_stats_file, et_projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, False)
+                plot_percentage(filepath=projection_stats_file, et_filepath=et_projection_stats_file,
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
                     output_path=output_path, block=block)

@@ -1,0 +1,15 @@
+problem:
+  C: 1
+  Hdilation: 1
+  Hstride: 1
+  K: 32
+  N: 1
+  P: 26
+  Q: 26
+  R: 3
+  S: 3
+  Wdilation: 1
+  Wstride: 1
+  shape: cnn-layer
+  et_cycle: 10
+  
