@@ -66,9 +66,9 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
                 no_update = True
     if len(nn_to_update)==0: print(utils.bcolors.WARNING + f'Skipping update!' + utils.bcolors.ENDC)
     else: print(utils.bcolors.FAIL + f'Needs updating. Regenerating nn: {nn_to_update}' + utils.bcolors.ENDC)
-
+    # print(nn_to_update);exit()
     for dtf_top_level_name in dtf_top_level_names:
-        for network_name in nn_to_update:
+        for network_name in network_names:
             # ------- max length version -----------
             # version1: all layers
             in_arr = ['python3', f'{_TRANCEGEN_DIR}/tlut_systolic_perf_projection.py', 
@@ -76,9 +76,11 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
                 '-ap', f'{_TRANCEGEN_DIR}/configs/arch/'+ arch_proj_top_level_name + '.yml',
                 '-dtfs', f'{_TRANCEGEN_DIR}/configs/dataflow/'+dtf_top_level_name + '.yaml', 
                 '-o', output_path]
-            if no_update: in_arr.append('--no_update')
-            # print(in_arr); exit()
+            if network_name not in nn_to_update: in_arr.append('--no_update')
+            if network_name in nn_to_update: nn_to_update.remove(network_name)
+            print(in_arr);
             p = subprocess.Popen(in_arr)
+
             output, error = p.communicate()
             if output != None: print(output)
 
@@ -89,26 +91,26 @@ def project_all(arch_proj_top_level_path, dtf_top_level_names, dtf_names, output
             output, error = p.communicate()
             if output != None: print(output)
             
-            if include_et:
-                # ------- max length version -----------
-                # version1: all layers
-                in_arr = ['python3', f'{_TRANCEGEN_DIR}/tlut_systolic_perf_projection.py', 
-                    '-nn', f'{_TRANCEGEN_DIR}/configs/workloads/{network_name}_et_graph/layers.yaml', 
-                    '-ap', f'{_TRANCEGEN_DIR}/configs/arch/'+ arch_proj_top_level_name + '.yml',
-                    '-dtfs', f'{_TRANCEGEN_DIR}/configs/dataflow/'+dtf_top_level_name + '.yaml', 
-                    '-o', output_path]
-                if no_update: in_arr.append('--no_update')
-                # print(in_arr); exit()
-                p = subprocess.Popen(in_arr)
-                output, error = p.communicate()
-                if output != None: print(output)
+            # if include_et:
+            #     # ------- max length version -----------
+            #     # version1: all layers
+            #     in_arr = ['python3', f'{_TRANCEGEN_DIR}/tlut_systolic_perf_projection.py', 
+            #         '-nn', f'{_TRANCEGEN_DIR}/configs/workloads/{network_name}_et_graph/layers.yaml', 
+            #         '-ap', f'{_TRANCEGEN_DIR}/configs/arch/'+ arch_proj_top_level_name + '.yml',
+            #         '-dtfs', f'{_TRANCEGEN_DIR}/configs/dataflow/'+dtf_top_level_name + '.yaml', 
+            #         '-o', output_path]
+            #     if no_update: in_arr.append('--no_update')
+            #     # print(in_arr); exit()
+            #     p = subprocess.Popen(in_arr)
+            #     output, error = p.communicate()
+            #     if output != None: print(output)
 
-                # version2: conv only
-                in_arr.append('--conv_only')
-                in_arr.append('--no_update') # This absolutely does not need update
-                p = subprocess.Popen(in_arr)
-                output, error = p.communicate()
-                if output != None: print(output)
+            #     # version2: conv only
+            #     in_arr.append('--conv_only')
+            #     in_arr.append('--no_update') # This absolutely does not need update
+            #     p = subprocess.Popen(in_arr)
+            #     output, error = p.communicate()
+            #     if output != None: print(output)
 
 def plot_percentage(filepath, arch_names, output_path, block, include_et, et_filepath=None):
     # parsing tlut max length run stat file
@@ -158,7 +160,7 @@ def plot_percentage(filepath, arch_names, output_path, block, include_et, et_fil
         et_usys_bw = [et_usys_l_32_bw, [float('NaN')], et_usys_m_32_bw, [float('NaN')], et_usys_s_32_bw, [float('NaN')]]
         et_usys_bw = sum(et_usys_bw, [])
         et_bsys_lat = [et_bsys_l_32_lat, [float('NaN')], et_bsys_m_32_lat, [float('NaN')], et_bsys_s_32_lat, [float('NaN')]]
-        et_bsys_lat = sum(bsys_lat, [])
+        et_bsys_lat = sum(et_bsys_lat, [])
         et_bsys_bw = [et_bsys_l_32_bw, [float('NaN')], et_bsys_m_32_bw, [float('NaN')], et_bsys_s_32_bw, [float('NaN')]]
         et_bsys_bw = sum(et_bsys_bw, [])
 
@@ -205,6 +207,7 @@ def plot_percentage(filepath, arch_names, output_path, block, include_et, et_fil
 
     # Fine tuning limit and ticks
     max_val = max(max(usys_lat), max(bsys_lat))
+    if et_filepath != None and include_et: max_val = max(max(usys_lat), max(bsys_lat), max(et_usys_lat), max(et_bsys_lat))
     rt_ax.set_ylim((0, 1.1*max_val))
     # rt_ax.set_yticks((0, 1, 2, 3, 4))
 
@@ -216,7 +219,8 @@ def plot_percentage(filepath, arch_names, output_path, block, include_et, et_fil
 
     fig.tight_layout()
     id_str = filepath.split('projection/')[1].split('.json')[0]
-    plt.savefig(output_path + f'/projection/{id_str}_lat' + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    if et_filepath != None and include_et: plt.savefig(output_path + f'/projection/{id_str}_lat_overlay' + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    else: plt.savefig(output_path + f'/projection/{id_str}_lat' + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
     fig, bw_ax = plt.subplots(figsize=(fig_w, fig_h))
     
@@ -248,6 +252,7 @@ def plot_percentage(filepath, arch_names, output_path, block, include_et, et_fil
 
     # Fine tuning limit and ticks
     max_val = max(max(usys_bw), max(bsys_bw))
+    if et_filepath != None and include_et: max_val = max(max(usys_bw), max(bsys_bw), max(et_usys_bw), max(et_bsys_bw))
     bw_ax.set_ylim((0, 1.1*max_val))
     # rt_ax.set_yticks((0, 1, 2, 3, 4))
 
@@ -259,7 +264,10 @@ def plot_percentage(filepath, arch_names, output_path, block, include_et, et_fil
 
     fig.tight_layout()
     id_str = filepath.split('projection/')[1].split('.json')[0]
-    plt.savefig(output_path + f'/projection/{id_str}_bw' + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    if et_filepath != None and include_et: 
+        plt.savefig(output_path + f'/projection/{id_str}_bw_overlay' + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
+    else: 
+        plt.savefig(output_path + f'/projection/{id_str}_bw' + '.pdf', bbox_inches='tight', dpi=my_dpi, pad_inches=0.02)
 
 
 if __name__ == "__main__":
@@ -295,6 +303,7 @@ if __name__ == "__main__":
             for dtf_name in dtf_names:
                 # conv only
                 projection_stats_file, et_projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, True)
+                print(f'Plotting percentage for convonly normal:{projection_stats_file}, et:{et_projection_stats_file}')
                 plot_percentage(filepath=projection_stats_file, et_filepath=et_projection_stats_file,
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
                     include_et=args.include_et,
@@ -302,6 +311,7 @@ if __name__ == "__main__":
                 
                 # all layers
                 projection_stats_file, et_projection_stats_file = utils.get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_name, False)
+                print(f'Plotting percentage for alllayers normal:{projection_stats_file}, et:{et_projection_stats_file}')
                 plot_percentage(filepath=projection_stats_file, et_filepath=et_projection_stats_file,
                     arch_names=['16_16', '32_32', '64_64', '128_128'], 
                     include_et=args.include_et,

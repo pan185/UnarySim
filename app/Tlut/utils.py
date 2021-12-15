@@ -241,5 +241,5 @@ def get_mem_sensitivity_stats_file_name(output_path, block, network_name, dtf_na
     
     # Check if et version of network stats exists
     et_file_exists = exists(et_projection_stats_file)
-    if et_file_exists: return projection_stats_file, et_file_exists
+    if et_file_exists: return projection_stats_file, et_projection_stats_file
     return projection_stats_file, None

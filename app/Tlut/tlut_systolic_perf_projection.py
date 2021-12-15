@@ -263,6 +263,7 @@ def projection(tlut_arch_names, output_path, nn_name, conv_only, bank, block, pl
             rect_lat.append(ideal+stall)
             rect_bw.append(i+w+o)
     
+    nn_name = nn_name.split('_et')[0]
     # get sys data
     bsys_bw, bsys_lat = systolic_data.get_sys_bw_lat(design='bsys', nn_name=nn_name, conv_only=conv_only, bank=bank, block=block, dim_arr=[16,32,64,128])
     usys_bw, usys_lat = systolic_data.get_sys_bw_lat(design='usys', nn_name=nn_name, conv_only=conv_only, bank=bank, block=block, dim_arr=[16,32,64,128])
